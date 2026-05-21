@@ -13,6 +13,7 @@ own browser.
 
 from __future__ import annotations
 
+from typing import Annotated
 from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -54,11 +55,11 @@ def google_search_url(query: str) -> str:
     return f"https://www.google.com/search?q={quote_plus(query)}"
 
 
+RegistryDep = Annotated[DorkRegistry, Depends(get_registry)]
+
+
 @router.get("/", response_class=HTMLResponse)
-def index(
-    request: Request,
-    registry: DorkRegistry = Depends(get_registry),
-) -> HTMLResponse:
+def index(request: Request, registry: RegistryDep) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -69,9 +70,9 @@ def index(
 @router.get("/search", response_class=HTMLResponse)
 def search(
     request: Request,
+    registry: RegistryDep,
     q: str = "",
     category: str = "",
-    registry: DorkRegistry = Depends(get_registry),
 ) -> HTMLResponse:
     hits = registry.search(q=q or None, category=category or None)
     return templates.TemplateResponse(
@@ -84,9 +85,9 @@ def search(
 @router.post("/render", response_class=HTMLResponse)
 def render(
     request: Request,
-    dork_id: str = Form(...),
-    target: str = Form(...),
-    registry: DorkRegistry = Depends(get_registry),
+    registry: RegistryDep,
+    dork_id: Annotated[str, Form()],
+    target: Annotated[str, Form()],
 ) -> HTMLResponse:
     try:
         query = registry.render(dork_id, target)
