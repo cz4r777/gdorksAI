@@ -122,10 +122,7 @@ class ScopeGuard:
             return False
         if host in self._exact:
             return True
-        for suffix in self._wildcards:
-            if host.endswith("." + suffix):
-                return True
-        return False
+        return any(host.endswith("." + suffix) for suffix in self._wildcards)
 
     def assert_in_scope(self, target: str, *, caller: str = "unknown") -> None:
         if not self.is_in_scope(target):

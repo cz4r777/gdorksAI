@@ -131,9 +131,11 @@ def test_refusal_is_logged(
     scope_file = tmp_path / "scope.json"
     _write_scope(scope_file, ["example.com"])
     guard = ScopeGuard(scope_file)
-    with caplog.at_level(logging.WARNING, logger="gdorksai.scope"):
-        with pytest.raises(OutOfScopeError):
-            guard.assert_in_scope("evil.com", caller="test")
+    with (
+        caplog.at_level(logging.WARNING, logger="gdorksai.scope"),
+        pytest.raises(OutOfScopeError),
+    ):
+        guard.assert_in_scope("evil.com", caller="test")
     assert any("scope refused" in r.message for r in caplog.records)
     assert any("evil.com" in r.message for r in caplog.records)
 
