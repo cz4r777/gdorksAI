@@ -1,0 +1,75 @@
+# Canonical label set. Apply via:
+#   scripts/setup-labels.sh <owner/repo>
+- name: phase:0
+  color: ededed
+  description: Framework bootstrap
+- name: phase:1
+  color: c5def5
+  description: Dork registry + query builder
+- name: phase:2
+  color: bfdadc
+  description: Local AI integration
+- name: phase:3
+  color: d4c5f9
+  description: Pivot + report
+- name: phase:4
+  color: c2e0c6
+  description: Hardening + release
+
+- name: area:registry
+  color: fbca04
+  description: Dork registry / data layer
+- name: area:ai
+  color: 5319e7
+  description: AI adapter, prompts, models
+- name: area:web
+  color: 0e8a16
+  description: FastAPI / HTMX / templates
+- name: area:scope
+  color: b60205
+  description: Scope guard / ethics rails
+- name: area:docs
+  color: 1d76db
+  description: Documentation
+- name: area:ci
+  color: 444444
+  description: CI / build / tooling
+
+- name: priority:p0
+  color: b60205
+  description: Drop everything
+- name: priority:p1
+  color: d93f0b
+  description: This sprint
+- name: priority:p2
+  color: fbca04
+  description: Soon-ish
+
+- name: status:design
+  color: ededed
+  description: Awaiting design sign-off
+- name: status:ready
+  color: 0e8a16
+  description: Ready to implement
+- name: status:in-progress
+  color: 0052cc
+  description: Being worked on
+- name: status:review
+  color: 6f42c1
+  description: PR open, awaiting review
+- name: status:blocked
+  color: b60205
+  description: Blocked, see latest comment
+
+- name: type:feature
+  color: a2eeef
+  description: New capability
+- name: type:bug
+  color: ee0701
+  description: Defect
+- name: type:dork-category
+  color: c2e0c6
+  description: Curation of dork data
+- name: type:security
+  color: b60205
+  description: Security / ethics issue

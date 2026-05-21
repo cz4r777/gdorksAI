@@ -1,0 +1,50 @@
+name: Feature
+description: Propose a new capability or enhancement.
+labels: ["type:feature", "status:design"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What gap or pain point does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: High-level description of the change. Pseudocode/UI sketches welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Concrete, testable bullets. PR cannot merge until all are checked.
+      placeholder: |
+        - [ ] Endpoint /foo returns 200 with the expected shape
+        - [ ] Scope guard rejects out-of-scope target
+        - [ ] Test added in tests/test_foo.py
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Explicitly out of scope
+      description: What this ticket will NOT do (anti-scope-creep).
+    validations:
+      required: true
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Phase
+      options: ["phase:0", "phase:1", "phase:2", "phase:3", "phase:4"]
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: ["area:registry", "area:ai", "area:web", "area:scope", "area:docs", "area:ci"]
+    validations:
+      required: true

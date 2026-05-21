@@ -1,0 +1,44 @@
+name: Bug
+description: Something is broken or behaving unexpectedly.
+labels: ["type:bug", "status:ready"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: e.g. v0.1.0 or commit sha
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: ["priority:p0", "priority:p1", "priority:p2"]
+    validations:
+      required: true

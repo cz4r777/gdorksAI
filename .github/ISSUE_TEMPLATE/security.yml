@@ -1,0 +1,27 @@
+name: Security / ethics issue
+description: Report a security issue, scope-guard bypass, or ethics concern. PUBLIC issues only for non-sensitive items — open a private security advisory for sensitive reports.
+labels: ["type:security", "priority:p0", "status:ready"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **STOP**: If the issue could enable misuse of the tool against unauthorized targets,
+        or reveals a way to bypass the scope guard, do NOT file publicly.
+        Open a private security advisory on the GitHub repo instead.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact / threat model
+      description: Who is harmed, how, and under what conditions.
+    validations:
+      required: true
+  - type: textarea
+    id: suggested_fix
+    attributes:
+      label: Suggested fix

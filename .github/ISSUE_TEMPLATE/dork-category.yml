@@ -1,0 +1,31 @@
+name: Dork category
+description: Add or curate a category of Google dorks.
+labels: ["type:dork-category", "area:registry", "status:ready"]
+body:
+  - type: input
+    id: category
+    attributes:
+      label: Category name
+      placeholder: e.g. "GraphQL endpoints", "Kubernetes dashboards"
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Rationale
+      description: Why this category? Real engagements where it would be useful.
+    validations:
+      required: true
+  - type: textarea
+    id: dorks
+    attributes:
+      label: Dorks
+      description: One per line. Use `{target}` as the domain placeholder.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Source / attribution
+      description: Where did these come from? Original authorship counts.

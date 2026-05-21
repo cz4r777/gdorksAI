@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Local AI / model artifacts
+models/
+*.gguf
+*.safetensors
+
+# Local DB / runtime
+*.db
+*.sqlite
+*.sqlite3
+runtime/
+logs/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+node_modules/
+
+# Legacy / reference material pulled in from outside the repo (never commit)
+_legacy/
+_reference/
