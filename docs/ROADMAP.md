@@ -15,7 +15,7 @@ Bootstrap repo: docs, ticket templates, CI, project skeleton. No runtime feature
 **Exit criteria:**
 - [x] Registry parses configured dork corpus into normalized records (P1-T1)
 - [x] Scope guard refuses out-of-scope targets, integrated into render (P1-T2)
-- [ ] Web UI: browse categories, search, get clickable URL with scope enforcement (P1-T3)
+- [x] Web UI: browse categories, search, get clickable URL with scope enforcement (P1-T3)
 
 ## Phase 2 — Local AI integration
 - `app/core/ai.py` adapter with Ollama primary + Groq fallback.

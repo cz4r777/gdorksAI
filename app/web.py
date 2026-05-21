@@ -1,0 +1,122 @@
+"""Web routes for the Phase 1 minimal UI.
+
+Three endpoints:
+- ``GET /``           home page (categories + search box)
+- ``GET /search``     HTMX partial of matching dorks
+- ``POST /render``    runs the scope-gated render, returns success or
+                      refusal HTML partial
+
+The page is intentionally inert: no auto-fetch, no scraping, no
+background navigation. The operator clicks the rendered link in their
+own browser.
+"""
+
+from __future__ import annotations
+
+from urllib.parse import quote_plus
+
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
+from app.core.dorks import (
+    DorkNotFoundError,
+    DorkRegistry,
+    InvalidTargetError,
+    load_default_registry,
+)
+from app.core.scope import OutOfScopeError
+
+_TEMPLATES_DIR = "app/templates"
+_RESULT_CAP = 200
+
+router = APIRouter()
+templates = Jinja2Templates(directory=_TEMPLATES_DIR)
+
+_registry_singleton: DorkRegistry | None = None
+
+
+def get_registry() -> DorkRegistry:
+    """Lazy registry loader. Cached; reset for tests by clearing the global."""
+    global _registry_singleton
+    if _registry_singleton is None:
+        _registry_singleton = load_default_registry()
+    return _registry_singleton
+
+
+def reset_registry() -> None:
+    """Test helper. Clears the cached registry."""
+    global _registry_singleton
+    _registry_singleton = None
+
+
+def google_search_url(query: str) -> str:
+    return f"https://www.google.com/search?q={quote_plus(query)}"
+
+
+@router.get("/", response_class=HTMLResponse)
+def index(
+    request: Request,
+    registry: DorkRegistry = Depends(get_registry),
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {"categories": registry.list_categories()},
+    )
+
+
+@router.get("/search", response_class=HTMLResponse)
+def search(
+    request: Request,
+    q: str = "",
+    category: str = "",
+    registry: DorkRegistry = Depends(get_registry),
+) -> HTMLResponse:
+    hits = registry.search(q=q or None, category=category or None)
+    return templates.TemplateResponse(
+        request,
+        "_search_results.html",
+        {"hits": hits[:_RESULT_CAP], "total": len(hits), "cap": _RESULT_CAP},
+    )
+
+
+@router.post("/render", response_class=HTMLResponse)
+def render(
+    request: Request,
+    dork_id: str = Form(...),
+    target: str = Form(...),
+    registry: DorkRegistry = Depends(get_registry),
+) -> HTMLResponse:
+    try:
+        query = registry.render(dork_id, target)
+    except InvalidTargetError as e:
+        return templates.TemplateResponse(
+            request,
+            "_render_refused.html",
+            {"reason": "invalid target", "detail": str(e), "target": target},
+            status_code=400,
+        )
+    except OutOfScopeError as e:
+        return templates.TemplateResponse(
+            request,
+            "_render_refused.html",
+            {"reason": "out of scope", "detail": str(e), "target": target},
+            status_code=403,
+        )
+    except DorkNotFoundError as e:
+        return templates.TemplateResponse(
+            request,
+            "_render_refused.html",
+            {"reason": "unknown dork id", "detail": str(e), "target": target},
+            status_code=404,
+        )
+    return templates.TemplateResponse(
+        request,
+        "_render_success.html",
+        {
+            "query": query,
+            "url": google_search_url(query),
+            "target": target.strip(),
+        },
+    )
