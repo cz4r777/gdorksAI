@@ -43,8 +43,16 @@ Web tool that turns a curated dork corpus into an AI-assisted reconnaissance wor
 - Roles: `query_gen`, `triage`, `pivot`, `report`. Each role has its own system prompt template under `app/core/prompts/`.
 
 ### Scope guard (`app/core/scope.py`)
-- Every query/triage/pivot/report call must reference a target domain inside the operator's authorized-scope list (`runtime/scope.json`).
-- Refuses to render or execute if the target is not in scope. Logs every refusal.
+- Every render/query/triage/pivot/report call must reference a target domain inside the operator's authorized scope, loaded from `runtime/scope.json` (override with `SCOPE_FILE`).
+- Refuses to render or execute if the target is not in scope. Refusals are logged with target + caller label + scope file path.
+- Missing or malformed scope file => refuse-all (secure default).
+- Scope file format:
+  ```json
+  { "targets": ["example.com", "*.example.com", "research.example.org"] }
+  ```
+  - Exact host entries match that host only.
+  - `*.example.com` matches subdomains (`a.example.com`, `a.b.example.com`) but NOT the apex — add an explicit `example.com` for the apex.
+  - Hostnames are normalized (lower-cased, trailing dot stripped).
 - This is the ethics rail: the tool will not assist on unauthorized targets.
 
 ### Web layer
