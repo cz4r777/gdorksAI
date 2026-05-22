@@ -11,7 +11,11 @@ Bootstrap repo: docs, ticket templates, CI, project skeleton. No runtime feature
 - `/` page: list categories, search, render dork URL with target substitution.
 - Scope guard: target must be in `runtime/scope.json`; refuse otherwise.
 - No AI yet.
-**Exit criteria:** operator can browse categories, pick a dork, get a clickable URL, with scope enforcement.
+
+**Exit criteria:**
+- [x] Registry parses configured dork corpus into normalized records (P1-T1)
+- [ ] Scope guard refuses out-of-scope targets (P1-T2)
+- [ ] Web UI: browse categories, search, get clickable URL with scope enforcement (P1-T3)
 
 ## Phase 2 — Local AI integration
 - `app/core/ai.py` adapter with Ollama primary + Groq fallback.
