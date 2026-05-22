@@ -33,6 +33,7 @@ def client(
 
     monkeypatch.setenv("DORKS_DATA_PATH", str(corpus))
     monkeypatch.setenv("SCOPE_FILE", str(scope_file))
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
     web.reset_registry()
     scope_module.reset_default_guard()
     return TestClient(app)
@@ -143,3 +144,41 @@ def test_home_marks_phase2_stages_coming_soon(client: TestClient) -> None:
         # each unavailable stage carries the disabled marker somewhere
     # at least one unavailable stage rendered as aria-disabled
     assert 'aria-disabled="true"' in body
+
+
+def test_diagnostics_page_renders_empty_when_no_events(client: TestClient) -> None:
+    r = client.get("/diagnostics")
+    assert r.status_code == 200
+    assert "Diagnostics" in r.text
+    # Lifespan-emitted startup events should already exist
+    assert "startup" in r.text or "No events yet" in r.text
+
+
+def test_diagnostics_refresh_runs_health_and_returns_partial(
+    client: TestClient,
+) -> None:
+    r = client.post("/diagnostics/refresh")
+    assert r.status_code == 200
+    body = r.text
+    assert "<html" not in body.lower()
+    assert "events-table" in body
+    assert "health" in body or "ollama" in body
+
+
+def test_diagnostics_jsonl_streams_raw_file(client: TestClient) -> None:
+    # Cause some events to be written
+    client.post("/diagnostics/refresh")
+    r = client.get("/diagnostics.jsonl")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("application/x-ndjson")
+    # Each line should be valid JSON
+    for line in r.text.splitlines():
+        if not line.strip():
+            continue
+        json.loads(line)
+
+
+def test_nav_includes_diagnostics(client: TestClient) -> None:
+    r = client.get("/")
+    assert 'data-stage="diagnostics"' in r.text
+    assert 'data-available="true"' in r.text  # /diagnostics IS mounted

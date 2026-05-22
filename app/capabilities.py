@@ -35,10 +35,17 @@ _STAGES: list[tuple[str, str, str, str, str]] = [
         "1",
     ),
     (
+        "diagnostics",
+        "Diagnostics",
+        "/diagnostics",
+        "Event log: see what happened, when, and whether components are healthy.",
+        "1",
+    ),
+    (
         "status",
         "Status",
         "/status",
-        "Corpus, scope, and capability diagnostics.",
+        "Current-state snapshot derived from the event log.",
         "1",
     ),
     (

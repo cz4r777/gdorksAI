@@ -17,7 +17,7 @@ from typing import Annotated
 from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from app.capabilities import build_state, compute_menu
@@ -27,6 +27,8 @@ from app.core.dorks import (
     InvalidTargetError,
     load_default_registry,
 )
+from app.core.events import events_file, read_recent
+from app.core.health import run_health_checks
 from app.core.scope import OutOfScopeError
 
 _TEMPLATES_DIR = "app/templates"
@@ -59,6 +61,33 @@ def google_search_url(query: str) -> str:
 
 
 RegistryDep = Annotated[DorkRegistry, Depends(get_registry)]
+
+
+@router.get("/diagnostics", response_class=HTMLResponse)
+def diagnostics(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "diagnostics.html",
+        {"events": read_recent(200), "events_file": str(events_file())},
+    )
+
+
+@router.post("/diagnostics/refresh", response_class=HTMLResponse)
+async def diagnostics_refresh(request: Request) -> HTMLResponse:
+    await run_health_checks()
+    return templates.TemplateResponse(
+        request,
+        "_events_table.html",
+        {"events": read_recent(200)},
+    )
+
+
+@router.get("/diagnostics.jsonl")
+def diagnostics_jsonl() -> Response:
+    path = events_file()
+    if not path.is_file():
+        return Response(content="", media_type="application/x-ndjson")
+    return FileResponse(path, media_type="application/x-ndjson")
 
 
 @router.get("/", response_class=HTMLResponse)

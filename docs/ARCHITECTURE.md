@@ -60,8 +60,16 @@ Web tool that turns a curated dork corpus into an AI-assisted reconnaissance wor
 - Tailwind via CDN in v1; bundle later if needed.
 - One page per workflow stage (query → triage → pivot → report) with HTMX swaps.
 
+### Diagnostic event log (`app/core/events.py` + `app/core/health.py`)
+- Append-only JSON-lines file at `runtime/events.jsonl` (override with `EVENTS_FILE`). One event per line, oldest-first.
+- This file is the **source of truth** for "what happened in this session" — UI surfaces and external diagnostic tools both read from it. App state itself (registry, scope) lives in live objects; events are the audit/diagnostic surface.
+- Event shape: `{ts, kind, level, component, summary, data}`. Kinds are frozen for v1 (startup, registry_loaded, scope_loaded, ollama_check, groq_check, prompts_check, routes_mounted, health_check, scope_refused, ai_call, ai_refused, error). Levels: info / warn / error.
+- Privacy: events carry **metadata only** — no scope contents, no secrets, no prompt body, no model output.
+- `health.run_health_checks()` runs five cheap probes and emits one event per probe: ollama reachability (2-second HTTP probe), Groq key presence (no outbound call), registry load, scope file state, prompts directory.
+- `/diagnostics` renders the last 200 events; `/diagnostics.jsonl` streams the raw file; `/diagnostics/refresh` re-runs the probes.
+
 ### Navigation & capability detection (`app/capabilities.py`)
-- A persistent top-level menu lists every intended workflow stage (Home, Status, Query, Triage, Pivot, Report).
+- A persistent top-level menu lists every intended workflow stage (Home, Diagnostics, Status, Query, Triage, Pivot, Report).
 - "Available" vs "Coming soon" is derived from the live FastAPI route table, **not** from branch names, build flags, or hand-maintained version strings. If the route isn't mounted, the menu item is disabled.
 - `build_state(menu)` returns a coarse label (`bootstrap` / `phase-1` / `phase-2` / `phase-3`) for the header badge — also derived from live route mounts.
 - Future phase routes (Query/Triage/Pivot/Report) appear as "coming soon" until their respective tickets ship, so the operator always sees the target state and the current state side-by-side.
