@@ -5,8 +5,9 @@ normalizes per-category text files (and an optional flat JSON catalog)
 into immutable records, and exposes category listing, search, and
 target-substituted query rendering.
 
-Phase 1 scope: parsing + in-memory index + render helper. Scope-guard
-integration is P1-T2; web UI is P1-T3.
+Phase 1 scope: parsing + in-memory index + render helper. Web UI is P1-T3.
+Render is scope-gated via :mod:`app.core.scope`; out-of-scope targets raise
+:class:`app.core.scope.OutOfScopeError`.
 """
 
 from __future__ import annotations
@@ -17,6 +18,9 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+
+from app.core.scope import ScopeGuard
+from app.core.scope import assert_in_scope as _default_assert_in_scope
 
 _TARGET_PLACEHOLDER = "{target}"
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
@@ -152,11 +156,21 @@ class DorkRegistry:
         except KeyError as e:
             raise DorkNotFoundError(dork_id) from e
 
-    def render(self, dork_id: str, target: str) -> str:
+    def render(
+        self,
+        dork_id: str,
+        target: str,
+        scope_guard: ScopeGuard | None = None,
+    ) -> str:
         if not target or not target.strip():
             raise InvalidTargetError("target is required")
+        clean_target = target.strip()
+        if scope_guard is not None:
+            scope_guard.assert_in_scope(clean_target, caller="dorks.render")
+        else:
+            _default_assert_in_scope(clean_target, caller="dorks.render")
         record = self.get(dork_id)
-        return record.query.replace(_TARGET_PLACEHOLDER, target.strip())
+        return record.query.replace(_TARGET_PLACEHOLDER, clean_target)
 
 
 def load_default_registry() -> DorkRegistry:
