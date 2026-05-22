@@ -60,6 +60,12 @@ Web tool that turns a curated dork corpus into an AI-assisted reconnaissance wor
 - Tailwind via CDN in v1; bundle later if needed.
 - One page per workflow stage (query → triage → pivot → report) with HTMX swaps.
 
+### Navigation & capability detection (`app/capabilities.py`)
+- A persistent top-level menu lists every intended workflow stage (Home, Status, Query, Triage, Pivot, Report).
+- "Available" vs "Coming soon" is derived from the live FastAPI route table, **not** from branch names, build flags, or hand-maintained version strings. If the route isn't mounted, the menu item is disabled.
+- `build_state(menu)` returns a coarse label (`bootstrap` / `phase-1` / `phase-2` / `phase-3`) for the header badge — also derived from live route mounts.
+- Future phase routes (Query/Triage/Pivot/Report) appear as "coming soon" until their respective tickets ship, so the operator always sees the target state and the current state side-by-side.
+
 ## Data flow (single recon session)
 1. Operator declares a target + uploads/links the engagement scope.
 2. Operator picks a category or types intent → AI generates dork(s).

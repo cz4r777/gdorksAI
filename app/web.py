@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from app.capabilities import build_state, compute_menu
 from app.core.dorks import (
     DorkNotFoundError,
     DorkRegistry,
@@ -33,6 +34,8 @@ _RESULT_CAP = 200
 
 router = APIRouter()
 templates = Jinja2Templates(directory=_TEMPLATES_DIR)
+templates.env.globals["compute_menu"] = compute_menu
+templates.env.globals["build_state"] = build_state
 
 _registry_singleton: DorkRegistry | None = None
 

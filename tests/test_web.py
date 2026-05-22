@@ -115,3 +115,31 @@ def test_healthz_still_works(client: TestClient) -> None:
     r = client.get("/healthz")
     assert r.status_code == 200
     assert r.json() == {"status": "ok"}
+
+
+def test_home_renders_navigation_with_phase_state(client: TestClient) -> None:
+    r = client.get("/")
+    assert r.status_code == 200
+    body = r.text
+    assert 'data-testid="primary-nav"' in body
+    assert 'data-build-state="phase-1"' in body
+    assert 'data-stage="home"' in body
+    assert 'data-stage="query"' in body
+    assert 'data-stage="status"' in body
+
+
+def test_home_marks_phase1_stages_available(client: TestClient) -> None:
+    r = client.get("/")
+    body = r.text
+    assert 'data-stage="home"' in body and 'data-available="true"' in body
+
+
+def test_home_marks_phase2_stages_coming_soon(client: TestClient) -> None:
+    r = client.get("/")
+    body = r.text
+    assert "coming soon" in body.lower()
+    for stage in ("query", "triage", "pivot", "report", "status"):
+        assert f'data-stage="{stage}"' in body
+        # each unavailable stage carries the disabled marker somewhere
+    # at least one unavailable stage rendered as aria-disabled
+    assert 'aria-disabled="true"' in body
