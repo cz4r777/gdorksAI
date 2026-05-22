@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>gdorksAI</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
+  <main class="max-w-4xl mx-auto p-6">
+    <header class="mb-6">
+      <h1 class="text-2xl font-semibold">gdorksAI</h1>
+      <p class="text-xs text-gray-500">
+        Authorized engagements only. Scope is enforced by
+        <code>runtime/scope.json</code>; out-of-scope targets are refused.
+      </p>
+    </header>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
