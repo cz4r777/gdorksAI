@@ -38,9 +38,15 @@ Web tool that turns a curated dork corpus into an AI-assisted reconnaissance wor
 - Provides: search by keyword/category, list categories, render with `{target}` substitution.
 
 ### AI adapter (`app/core/ai.py`)
-- Single interface: `generate(prompt, role) -> str`.
-- Routes to Ollama (localhost:11434) by default. Falls back to Groq when Ollama unreachable or model missing.
-- Roles: `query_gen`, `triage`, `pivot`, `report`. Each role has its own system prompt template under `app/core/prompts/`.
+- Async interface: `await adapter.generate(AIRequest) -> AIResponse`.
+- Routes to Ollama (localhost:11434) by default. Falls back to Groq only when Ollama is unreachable OR the role's model is missing AND `GROQ_API_KEY` is set. If neither backend is usable, raises `AIAdapterError(NO_BACKEND_AVAILABLE)` — no silent degradation.
+- Roles: `query_gen`, `triage`, `pivot`, `report`. Each role has its own prompt template under `app/core/prompts/<role>_v<n>.md` (highest version wins). Prompt files use `---SYSTEM---` / `---USER---` markers.
+- Per-call rails (in order):
+  1. `scope_guard.assert_in_scope(target)` before any backend call. Out-of-scope target raises `OutOfScopeError` and no backend traffic is emitted.
+  2. Prompt file is rendered with the request vars; filename + sha256 of the rendered content are recorded on every call.
+  3. Backend call (async httpx). Typed errors via `AIAdapterError(reason: AIErrorReason)` — e.g. `OLLAMA_UNREACHABLE`, `OLLAMA_MODEL_MISSING`, `GROQ_RATE_LIMITED`.
+  4. Post-call hostname scan: any hostname found in the model's output that is not in scope refuses the entire response with `OUT_OF_SCOPE_OUTPUT`. The model never gets to leak an alternate target through us.
+- Tests mock the HTTP layer via `httpx.MockTransport`; CI does not require a live Ollama.
 
 ### Scope guard (`app/core/scope.py`)
 - Every render/query/triage/pivot/report call must reference a target domain inside the operator's authorized scope, loaded from `runtime/scope.json` (override with `SCOPE_FILE`).
