@@ -52,7 +52,15 @@ def _phase3_app() -> FastAPI:
 def test_compute_menu_lists_all_stages_even_when_unavailable() -> None:
     menu = compute_menu(_empty_app())
     ids = [m["id"] for m in menu]
-    assert ids == ["home", "status", "query", "triage", "pivot", "report"]
+    assert ids == [
+        "home",
+        "diagnostics",
+        "status",
+        "query",
+        "triage",
+        "pivot",
+        "report",
+    ]
     assert all(m["available"] is False for m in menu)
 
 
