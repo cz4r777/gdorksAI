@@ -5,7 +5,6 @@ from unittest.mock import patch
 import httpx
 import pytest
 
-from app.core import events as events_mod
 from app.core import health
 from app.core.events import (
     KIND_GROQ_CHECK,
@@ -14,7 +13,6 @@ from app.core.events import (
     KIND_PROMPTS_CHECK,
     KIND_REGISTRY_LOADED,
     KIND_SCOPE_LOADED,
-    LEVEL_ERROR,
     LEVEL_INFO,
     LEVEL_WARN,
     read_recent,
