@@ -229,8 +229,8 @@ def query_page(request: Request) -> HTMLResponse:
 async def query_submit(
     request: Request,
     adapter: AdapterDep,
-    target: Annotated[str, Form()],
-    intent: Annotated[str, Form()],
+    target: Annotated[str, Form()] = "",
+    intent: Annotated[str, Form()] = "",
 ) -> HTMLResponse:
     target_clean = target.strip()
     intent_clean = intent.strip()

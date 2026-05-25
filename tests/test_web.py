@@ -122,7 +122,8 @@ def test_home_renders_navigation_with_phase_state(client: TestClient) -> None:
     assert r.status_code == 200
     body = r.text
     assert 'data-testid="primary-nav"' in body
-    assert 'data-build-state="phase-1"' in body
+    # /query is mounted via P2-T2 on this branch, so build_state flips to phase-2.
+    assert 'data-build-state="phase-2"' in body
     assert 'data-stage="home"' in body
     assert 'data-stage="query"' in body
     assert 'data-stage="status"' in body
