@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="mb-4">
+  <h2 class="text-lg font-medium mb-1">Pivot — related dorks for the same target</h2>
+  <p class="text-xs text-gray-500">
+    Paste a triaged finding (URL, plus optional notes). The local AI suggests
+    two to five adjacent dorks against the SAME authorized target — the
+    operator clicks each rendered URL in their own browser. No automation runs.
+  </p>
+</section>
+
+<form hx-post="/pivot" hx-target="#pivot-results"
+      class="border rounded bg-white p-3 mb-4">
+  <label class="block text-sm font-medium mb-1" for="target">Target</label>
+  <input id="target" name="target" type="text" required
+         placeholder="example.com — must be in scope"
+         class="w-full border rounded px-2 py-1 text-sm mb-3"
+         autocomplete="off">
+  <label class="block text-sm font-medium mb-1" for="finding">
+    Finding to pivot from
+  </label>
+  <textarea id="finding" name="finding" rows="4" required
+            placeholder="e.g. https://example.com/admin — exposed admin panel; suspect old framework version"
+            class="w-full border rounded px-2 py-1 text-sm mb-3 font-mono"></textarea>
+  <button class="bg-gray-900 text-white px-3 py-1 rounded text-sm">
+    Suggest pivots
+  </button>
+</form>
+
+<section id="pivot-results" aria-live="polite"></section>
+{% endblock %}

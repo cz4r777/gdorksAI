@@ -139,9 +139,9 @@ def test_home_marks_phase2_stages_coming_soon(client: TestClient) -> None:
     r = client.get("/")
     body = r.text
     assert "coming soon" in body.lower()
-    # /query and /triage are mounted now; only pivot/report/status remain
+    # /query, /triage, and /pivot are mounted now; only report/status remain
     # coming-soon on this branch.
-    for stage in ("pivot", "report", "status"):
+    for stage in ("report", "status"):
         assert f'data-stage="{stage}"' in body
     # at least one unavailable stage rendered as aria-disabled
     assert 'aria-disabled="true"' in body

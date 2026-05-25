@@ -1,4 +1,4 @@
-"""Web routes for the Phase 1 minimal UI + Phase 2 query/triage workflows.
+"""Web routes for the Phase 1 minimal UI + Phase 2/3 AI workflows.
 
 Endpoints:
 - ``GET /``           home page (categories + search box)
@@ -10,6 +10,9 @@ Endpoints:
 - ``GET /triage``     triage page form (paste snippets)
 - ``POST /triage``    calls AI adapter (triage), parses + dedupes
                       findings server-side, returns ranked partial
+- ``GET /pivot``      pivot page form (paste a triaged finding)
+- ``POST /pivot``     calls AI adapter (pivot), parses suggestions for
+                      same-target adjacent dorks, returns partial
 
 The page is intentionally inert: no auto-fetch, no scraping, no
 background navigation. The operator clicks links in their own browser.
@@ -424,5 +427,86 @@ async def triage_submit(
             "target": target_clean,
             "backend": resp.backend,
             "parsed": len(findings) > 0,
+        },
+    )
+
+
+@router.get("/pivot", response_class=HTMLResponse)
+def pivot_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "pivot.html", {})
+
+
+@router.post("/pivot", response_class=HTMLResponse)
+async def pivot_submit(
+    request: Request,
+    adapter: AdapterDep,
+    target: Annotated[str, Form()] = "",
+    finding: Annotated[str, Form()] = "",
+) -> HTMLResponse:
+    target_clean = target.strip()
+    finding_clean = finding.strip()
+    if not target_clean or not finding_clean:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "missing input",
+                "detail": "Both target and finding are required.",
+                "target": target_clean,
+            },
+            status_code=400,
+        )
+    try:
+        resp = await adapter.generate(
+            AIRequest(
+                role="pivot",
+                target=target_clean,
+                user_input=finding_clean,
+            )
+        )
+    except OutOfScopeError as e:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "out of scope",
+                "detail": str(e),
+                "target": target_clean,
+            },
+            status_code=403,
+        )
+    except AIAdapterError as e:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": e.reason.value,
+                "detail": str(e),
+                "target": target_clean,
+            },
+            status_code=_http_for_ai_reason(e.reason),
+        )
+    if resp.text.strip() == "OUT_OF_SCOPE":
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "out of scope",
+                "detail": (
+                    "The finding referenced an off-scope domain; the AI "
+                    "refused to generate pivot suggestions."
+                ),
+                "target": target_clean,
+            },
+            status_code=422,
+        )
+    suggestions = _parse_query_suggestions(resp.text, target_clean)
+    return templates.TemplateResponse(
+        request,
+        "_query_results.html",
+        {
+            "suggestions": suggestions,
+            "target": target_clean,
+            "backend": resp.backend,
         },
     )
