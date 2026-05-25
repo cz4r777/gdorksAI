@@ -8,6 +8,18 @@ A local web app where an authorized pentester can browse a curated dork registry
 
 **Phase 0 — Framework bootstrap.** Repo skeleton only; runtime features land in Phase 1+. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## Working style
+
+This project now prefers immediate pushed checkpoints over long local-only holds:
+
+1. make a code change
+2. commit it
+3. push it immediately
+4. use the pushed branch as the backup / rollback point
+5. review or merge later when convenient
+
+If a change is risky, make smaller commits and push each checkpoint. The goal is to keep progress visible, reversible, and not blocked on stacked merge choreography.
+
 ## What it does (target state)
 
 1. Browse and search dork categories.
@@ -53,7 +65,7 @@ scripts/         Setup helpers
 
 - [Architecture](docs/ARCHITECTURE.md) — system design
 - [Roadmap](docs/ROADMAP.md) — phase plan and exit criteria
-- [Pipeline](docs/PIPELINE.md) — how changes flow from ticket to merge
+- [Pipeline](docs/PIPELINE.md) — how changes flow from ticket to pushed code and landing
 - [Workflow](docs/WORKFLOW.md) — roles, ticket types, kanban
 - [AI integration](docs/AI_INTEGRATION.md) — Ollama / Groq, prompts, models
 - [Security](docs/SECURITY.md) — ethics, scope, threat model

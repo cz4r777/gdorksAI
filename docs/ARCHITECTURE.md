@@ -93,6 +93,11 @@ Web tool that turns a curated dork corpus into an AI-assisted reconnaissance wor
 - Default profile = Ollama + no outbound calls. Operator must opt in to Groq fallback by setting `GROQ_API_KEY`.
 - All session data (scope, queries, pastes, reports) lives on disk under `runtime/`, never sent anywhere.
 
+## Delivery model
+- Operationally, the project now assumes incremental pushed checkpoints.
+- The canonical recovery mechanism for implementation work is git history on the remote branch, not long-lived hidden local state.
+- Review can happen on a PR or directly on the pushed branch, but code should normally be visible off-machine after each meaningful update.
+
 ## Dork data sourcing
 - The dork corpus is **not** vendored into this repo. The registry reads from `DORKS_DATA_PATH`, which the operator points at a local directory.
 - Acceptable sources: a curated local subset under `data/dorks/`, or an external sibling directory the operator owns.
