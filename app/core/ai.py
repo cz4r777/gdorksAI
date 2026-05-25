@@ -36,13 +36,13 @@ import logging
 import os
 import re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 import httpx
 
-from app.core.scope import OutOfScopeError, ScopeGuard
+from app.core.scope import ScopeGuard
 
 _log = logging.getLogger("gdorksai.ai")
 
@@ -60,7 +60,7 @@ _HOSTNAME_RE = re.compile(
 )
 
 
-class AIErrorReason(str, Enum):
+class AIErrorReason(StrEnum):
     OLLAMA_UNREACHABLE = "ollama_unreachable"
     OLLAMA_MODEL_MISSING = "ollama_model_missing"
     OLLAMA_HTTP_ERROR = "ollama_http_error"
