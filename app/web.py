@@ -30,6 +30,7 @@ from app.core.dorks import (
 from app.core.events import events_file, read_recent
 from app.core.health import run_health_checks
 from app.core.scope import OutOfScopeError
+from app.core.status import compute_snapshot
 
 _TEMPLATES_DIR = "app/templates"
 _RESULT_CAP = 200
@@ -88,6 +89,25 @@ def diagnostics_jsonl() -> Response:
     if not path.is_file():
         return Response(content="", media_type="application/x-ndjson")
     return FileResponse(path, media_type="application/x-ndjson")
+
+
+@router.get("/status", response_class=HTMLResponse)
+def status_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "status.html",
+        {"snapshot": compute_snapshot(request.app)},
+    )
+
+
+@router.post("/status/refresh", response_class=HTMLResponse)
+async def status_refresh(request: Request) -> HTMLResponse:
+    await run_health_checks()
+    return templates.TemplateResponse(
+        request,
+        "_status_cards.html",
+        {"snapshot": compute_snapshot(request.app)},
+    )
 
 
 @router.get("/", response_class=HTMLResponse)

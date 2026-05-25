@@ -139,9 +139,8 @@ def test_home_marks_phase2_stages_coming_soon(client: TestClient) -> None:
     r = client.get("/")
     body = r.text
     assert "coming soon" in body.lower()
-    for stage in ("query", "triage", "pivot", "report", "status"):
+    for stage in ("query", "triage", "pivot", "report"):
         assert f'data-stage="{stage}"' in body
-        # each unavailable stage carries the disabled marker somewhere
     # at least one unavailable stage rendered as aria-disabled
     assert 'aria-disabled="true"' in body
 
@@ -182,3 +181,43 @@ def test_nav_includes_diagnostics(client: TestClient) -> None:
     r = client.get("/")
     assert 'data-stage="diagnostics"' in r.text
     assert 'data-available="true"' in r.text  # /diagnostics IS mounted
+
+
+def test_status_page_renders(client: TestClient) -> None:
+    r = client.get("/status")
+    assert r.status_code == 200
+    body = r.text
+    assert "Status" in body
+    # No probes have been triggered through the web layer yet beyond lifespan
+    # events, so component cards should show as "not yet observed" or "ok".
+    assert 'data-component="ollama"' in body
+    assert 'data-component="groq"' in body
+    assert 'data-component="registry"' in body
+    assert 'data-component="scope"' in body
+    assert 'data-component="prompts"' in body
+
+
+def test_status_refresh_returns_partial_with_probes(client: TestClient) -> None:
+    r = client.post("/status/refresh")
+    assert r.status_code == 200
+    body = r.text
+    # Partial — should not include <html>
+    assert "<html" not in body.lower()
+    assert 'id="status-cards"' in body
+    # After running probes at least one component card has a level badge
+    assert "data-level=" in body
+
+
+def test_status_route_is_now_in_nav(client: TestClient) -> None:
+    r = client.get("/")
+    body = r.text
+    # /status is mounted now, so the menu should mark it available
+    assert 'data-stage="status"' in body
+    # The "status" stage block should include data-available="true"
+    import re
+
+    m = re.search(
+        r'data-stage="status"\s+data-available="(true|false)"', body
+    )
+    assert m is not None
+    assert m.group(1) == "true"
