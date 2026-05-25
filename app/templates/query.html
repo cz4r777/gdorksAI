@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="mb-4">
+  <h2 class="text-lg font-medium mb-1">Query — natural language to dork</h2>
+  <p class="text-xs text-gray-500">
+    Describe what you want to find on an authorized target. The local AI drafts
+    a Google dork; you click the rendered URL in your own browser. No automation
+    runs.
+  </p>
+</section>
+
+<form hx-post="/query" hx-target="#query-results"
+      class="border rounded bg-white p-3 mb-4">
+  <label class="block text-sm font-medium mb-1" for="target">Target</label>
+  <input id="target" name="target" type="text" required
+         placeholder="example.com — must be in scope"
+         class="w-full border rounded px-2 py-1 text-sm mb-3"
+         autocomplete="off">
+  <label class="block text-sm font-medium mb-1" for="intent">Intent</label>
+  <textarea id="intent" name="intent" rows="3" required
+            placeholder="What do you want to find? e.g. 'leaked configuration files'"
+            class="w-full border rounded px-2 py-1 text-sm mb-3"></textarea>
+  <button class="bg-gray-900 text-white px-3 py-1 rounded text-sm">
+    Draft dork
+  </button>
+</form>
+
+<section id="query-results" aria-live="polite"></section>
+{% endblock %}

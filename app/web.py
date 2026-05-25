@@ -1,10 +1,13 @@
-"""Web routes for the Phase 1 minimal UI.
+"""Web routes for the Phase 1 minimal UI + Phase 2 query workflow.
 
-Three endpoints:
+Endpoints:
 - ``GET /``           home page (categories + search box)
 - ``GET /search``     HTMX partial of matching dorks
 - ``POST /render``    runs the scope-gated render, returns success or
                       refusal HTML partial
+- ``GET /query``      query page form
+- ``POST /query``     calls the AI adapter (query_gen role), parses
+                      structured JSON suggestions, returns HTMX partial
 
 The page is intentionally inert: no auto-fetch, no scraping, no
 background navigation. The operator clicks the rendered link in their
@@ -13,7 +16,8 @@ own browser.
 
 from __future__ import annotations
 
-from typing import Annotated
+import json
+from typing import Annotated, Any
 from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -21,6 +25,13 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.capabilities import build_state, compute_menu
+from app.core.ai import (
+    AIAdapter,
+    AIAdapterError,
+    AIErrorReason,
+    AIRequest,
+    load_default_adapter,
+)
 from app.core.dorks import (
     DorkNotFoundError,
     DorkRegistry,
@@ -59,6 +70,89 @@ def google_search_url(query: str) -> str:
 
 
 RegistryDep = Annotated[DorkRegistry, Depends(get_registry)]
+
+
+_adapter_singleton: AIAdapter | None = None
+
+
+def get_adapter() -> AIAdapter:
+    """Lazy AI adapter loader. Override in tests via dependency_overrides."""
+    global _adapter_singleton
+    if _adapter_singleton is None:
+        _adapter_singleton = load_default_adapter()
+    return _adapter_singleton
+
+
+def reset_adapter() -> None:
+    """Test helper. Clears the cached default adapter."""
+    global _adapter_singleton
+    _adapter_singleton = None
+
+
+AdapterDep = Annotated[AIAdapter, Depends(get_adapter)]
+
+
+_AI_REASON_TO_HTTP: dict[AIErrorReason, int] = {
+    AIErrorReason.OUT_OF_SCOPE_OUTPUT: 422,
+    AIErrorReason.NO_BACKEND_AVAILABLE: 503,
+    AIErrorReason.OLLAMA_UNREACHABLE: 503,
+    AIErrorReason.OLLAMA_MODEL_MISSING: 503,
+    AIErrorReason.GROQ_NOT_CONFIGURED: 503,
+    AIErrorReason.GROQ_RATE_LIMITED: 429,
+    AIErrorReason.PROMPT_NOT_FOUND: 500,
+}
+
+
+def _http_for_ai_reason(reason: AIErrorReason) -> int:
+    return _AI_REASON_TO_HTTP.get(reason, 502)
+
+
+def _parse_query_suggestions(text: str, target: str) -> list[dict[str, Any]]:
+    """Parse query_gen output into suggestion objects.
+
+    Tries JSON object(s); falls back to a single raw suggestion if nothing
+    parses. Each suggestion has a pre-rendered Google URL so the template
+    can render a clickable link directly.
+    """
+    out: list[dict[str, Any]] = []
+    for line in text.strip().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        dork = str(obj.get("dork", "")).strip()
+        if not dork:
+            continue
+        rendered = dork.replace("{target}", target)
+        out.append(
+            {
+                "dork": dork,
+                "rendered": rendered,
+                "url": google_search_url(rendered),
+                "category": str(obj.get("category", "uncategorized")),
+                "rationale": str(obj.get("rationale", "")),
+                "structured": True,
+            }
+        )
+    if not out:
+        raw = text.strip()
+        rendered = raw.replace("{target}", target)
+        out.append(
+            {
+                "dork": raw,
+                "rendered": rendered,
+                "url": google_search_url(rendered),
+                "category": "raw",
+                "rationale": "model output could not be parsed as structured JSON",
+                "structured": False,
+            }
+        )
+    return out
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -122,5 +216,72 @@ def render(
             "query": query,
             "url": google_search_url(query),
             "target": target.strip(),
+        },
+    )
+
+
+@router.get("/query", response_class=HTMLResponse)
+def query_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "query.html", {})
+
+
+@router.post("/query", response_class=HTMLResponse)
+async def query_submit(
+    request: Request,
+    adapter: AdapterDep,
+    target: Annotated[str, Form()],
+    intent: Annotated[str, Form()],
+) -> HTMLResponse:
+    target_clean = target.strip()
+    intent_clean = intent.strip()
+    if not target_clean or not intent_clean:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "missing input",
+                "detail": "Both target and intent are required.",
+                "target": target_clean,
+            },
+            status_code=400,
+        )
+    try:
+        resp = await adapter.generate(
+            AIRequest(
+                role="query_gen",
+                target=target_clean,
+                user_input=intent_clean,
+            )
+        )
+    except OutOfScopeError as e:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "out of scope",
+                "detail": str(e),
+                "target": target_clean,
+            },
+            status_code=403,
+        )
+    except AIAdapterError as e:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": e.reason.value,
+                "detail": str(e),
+                "target": target_clean,
+            },
+            status_code=_http_for_ai_reason(e.reason),
+        )
+    suggestions = _parse_query_suggestions(resp.text, target_clean)
+    return templates.TemplateResponse(
+        request,
+        "_query_results.html",
+        {
+            "suggestions": suggestions,
+            "target": target_clean,
+            "backend": resp.backend,
         },
     )

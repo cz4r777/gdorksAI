@@ -138,8 +138,8 @@ def test_home_marks_phase2_stages_coming_soon(client: TestClient) -> None:
     r = client.get("/")
     body = r.text
     assert "coming soon" in body.lower()
-    for stage in ("query", "triage", "pivot", "report", "status"):
+    # /query is mounted now via P2-T2, so it's no longer in the coming-soon set.
+    for stage in ("triage", "pivot", "report", "status"):
         assert f'data-stage="{stage}"' in body
-        # each unavailable stage carries the disabled marker somewhere
     # at least one unavailable stage rendered as aria-disabled
     assert 'aria-disabled="true"' in body
