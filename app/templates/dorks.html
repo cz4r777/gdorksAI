@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<nav class="text-xs text-gray-500 mb-2">
+  <a href="/" class="underline">categories</a> &raquo; all dorks
+</nav>
+
+<section class="mb-3 flex items-baseline justify-between">
+  <h2 class="text-lg font-medium">
+    All dorks
+    <span class="text-sm text-gray-500 ml-2">
+      {{ total }} total
+    </span>
+  </h2>
+  <span class="text-xs text-gray-500">
+    page {{ page }} of {{ pages }} ({{ per }} per page)
+  </span>
+</section>
+
+{% if hits %}
+<ul class="divide-y border rounded bg-white">
+  {% for h in hits %}
+  <li class="p-3" data-dork-id="{{ h.id }}">
+    <div class="text-xs text-gray-500 mb-1">
+      <a href="/category/{{ h.category|urlencode }}"
+         class="underline">{{ h.category }}</a>
+      &middot; <code>{{ h.source_file }}</code>
+    </div>
+    <code class="block text-sm mb-2 break-all">{{ h.query }}</code>
+    <form hx-post="/render"
+          hx-target="#render-{{ loop.index }}-all"
+          class="flex gap-2 items-center">
+      <input type="hidden" name="dork_id" value="{{ h.id }}">
+      <input name="target" type="text" required
+             placeholder="target host (must be in scope)"
+             class="flex-1 border rounded px-2 py-1 text-sm"
+             autocomplete="off">
+      <button class="bg-gray-900 text-white px-3 py-1 rounded text-sm">
+        Render
+      </button>
+    </form>
+    <div id="render-{{ loop.index }}-all" class="mt-2"></div>
+  </li>
+  {% endfor %}
+</ul>
+
+<nav class="mt-4 flex items-center gap-3 text-sm">
+  {% if page > 1 %}
+    <a href="/dorks?page={{ page - 1 }}&per={{ per }}"
+       class="underline">&laquo; prev</a>
+  {% else %}
+    <span class="text-gray-400">&laquo; prev</span>
+  {% endif %}
+  <span class="text-xs text-gray-500">
+    {{ ((page - 1) * per) + 1 }}–{{ ((page - 1) * per) + (hits|length) }} of {{ total }}
+  </span>
+  {% if page < pages %}
+    <a href="/dorks?page={{ page + 1 }}&per={{ per }}"
+       class="underline">next &raquo;</a>
+  {% else %}
+    <span class="text-gray-400">next &raquo;</span>
+  {% endif %}
+</nav>
+{% else %}
+<p class="text-sm text-gray-500">
+  No dorks on this page.
+  {% if total > 0 and page > 1 %}
+    <a href="/dorks" class="underline">Go to page 1</a>.
+  {% elif total == 0 %}
+    The registry is empty — check <code>DORKS_DATA_PATH</code>.
+  {% endif %}
+</p>
+{% endif %}
+{% endblock %}

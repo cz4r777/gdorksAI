@@ -112,10 +112,70 @@ async def status_refresh(request: Request) -> HTMLResponse:
 
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request, registry: RegistryDep) -> HTMLResponse:
+    categories = registry.list_categories()
+    counts = {c: len(registry.search(category=c)) for c in categories}
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"categories": registry.list_categories()},
+        {
+            "categories": categories,
+            "counts": counts,
+            "total": len(registry),
+        },
+    )
+
+
+@router.get("/category/{name}", response_class=HTMLResponse)
+def category_page(
+    request: Request, name: str, registry: RegistryDep
+) -> HTMLResponse:
+    hits = registry.search(category=name)
+    groups: dict[str, list] = {}
+    for r in hits:
+        groups.setdefault(r.source_file, []).append(r)
+    status = 200 if hits else 404
+    return templates.TemplateResponse(
+        request,
+        "category.html",
+        {
+            "category": name,
+            "groups": groups,
+            "total": len(hits),
+            "categories": registry.list_categories(),
+        },
+        status_code=status,
+    )
+
+
+_DORKS_PER_PAGE_DEFAULT = 50
+_DORKS_PER_PAGE_MAX = 200
+
+
+@router.get("/dorks", response_class=HTMLResponse)
+def dorks_list(
+    request: Request,
+    registry: RegistryDep,
+    page: int = 1,
+    per: int = _DORKS_PER_PAGE_DEFAULT,
+) -> HTMLResponse:
+    page = max(1, page)
+    per = max(1, min(per, _DORKS_PER_PAGE_MAX))
+    all_hits = registry.search()
+    total = len(all_hits)
+    start = (page - 1) * per
+    end = start + per
+    hits = all_hits[start:end]
+    pages = max(1, (total + per - 1) // per)
+    return templates.TemplateResponse(
+        request,
+        "dorks.html",
+        {
+            "hits": hits,
+            "page": page,
+            "per": per,
+            "total": total,
+            "pages": pages,
+        },
     )
 
 

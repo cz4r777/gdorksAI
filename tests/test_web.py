@@ -221,3 +221,65 @@ def test_status_route_is_now_in_nav(client: TestClient) -> None:
     )
     assert m is not None
     assert m.group(1) == "true"
+
+
+def test_home_shows_category_counts(client: TestClient) -> None:
+    r = client.get("/")
+    body = r.text
+    # Category card shows count next to name
+    assert "SQLi" in body
+    assert "(1)" in body  # _seed_minimal_corpus puts exactly 1 dork in SQLi
+    # The total dorks summary is rendered
+    assert "1 total dorks" in body
+    # And a link to /dorks exists
+    assert 'href="/dorks"' in body
+
+
+def test_home_categories_link_to_category_page(client: TestClient) -> None:
+    r = client.get("/")
+    body = r.text
+    assert 'href="/category/SQLi"' in body
+    assert 'data-category="SQLi"' in body
+
+
+def test_category_page_renders_grouped(client: TestClient) -> None:
+    r = client.get("/category/SQLi")
+    assert r.status_code == 200
+    body = r.text
+    # Breadcrumb to home
+    assert 'href="/"' in body
+    # Source-file group header
+    assert "basic.txt" in body
+    # Dork query content
+    assert "inurl:id=" in body
+    # Render form exists
+    assert 'hx-post="/render"' in body
+
+
+def test_unknown_category_returns_404(client: TestClient) -> None:
+    r = client.get("/category/NoSuchCategory")
+    assert r.status_code == 404
+    assert "Unknown category" in r.text
+
+
+def test_dorks_paginated_list(client: TestClient) -> None:
+    r = client.get("/dorks")
+    assert r.status_code == 200
+    body = r.text
+    assert "All dorks" in body
+    assert "inurl:id=" in body
+    # Each dork links back to its category
+    assert 'href="/category/SQLi"' in body
+
+
+def test_dorks_pagination_caps_per(client: TestClient) -> None:
+    # per is capped at 200; even an absurd value doesn't break the page
+    r = client.get("/dorks", params={"per": 99999})
+    assert r.status_code == 200
+    assert "All dorks" in r.text
+
+
+def test_dorks_page_below_one_normalized(client: TestClient) -> None:
+    r = client.get("/dorks", params={"page": -3})
+    assert r.status_code == 200
+    assert "page 1" in r.text
