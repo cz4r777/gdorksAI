@@ -1,0 +1,54 @@
+{% if not parsed %}
+<div class="border-l-4 border-amber-500 bg-amber-50 p-3 text-sm"
+     data-state="unparsed">
+  <div class="font-medium">No findings parsed</div>
+  <div class="text-xs text-gray-700 mt-1">
+    The AI ({{ backend }}) returned output that wasn't a JSON array of
+    findings, or the array contained no usable entries. Check
+    <a href="/diagnostics" class="underline">/diagnostics</a> for the raw
+    backend call, or rerun with cleaner snippets.
+  </div>
+</div>
+{% else %}
+<div class="mb-2 text-xs text-gray-500"
+     data-finding-count="{{ findings|length }}"
+     data-duplicates="{{ duplicates }}">
+  AI ({{ backend }}) returned <strong>{{ findings|length }}</strong>
+  finding{{ "s" if findings|length != 1 else "" }} for <code>{{ target }}</code>
+  {% if duplicates %}
+    &middot;
+    <span class="text-amber-700">
+      {{ duplicates }} duplicate{{ "s" if duplicates != 1 else "" }} collapsed
+    </span>
+  {% endif %}
+  .
+</div>
+<ul class="divide-y border rounded bg-white">
+{% for f in findings %}
+  <li class="p-3" data-priority="{{ f.priority }}">
+    <div class="flex items-baseline justify-between mb-1">
+      {% if f.priority == "high" %}
+        <span class="text-xs px-2 py-0.5 rounded bg-red-100 text-red-800">high</span>
+      {% elif f.priority == "medium" %}
+        <span class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800">medium</span>
+      {% else %}
+        <span class="text-xs px-2 py-0.5 rounded bg-gray-200 text-gray-700">low</span>
+      {% endif %}
+      {% if f.title %}
+        <span class="text-xs text-gray-500 truncate ml-2">{{ f.title }}</span>
+      {% endif %}
+    </div>
+    <a href="{{ f.url }}" target="_blank" rel="noopener noreferrer"
+       class="text-blue-700 underline break-all text-sm">
+      {{ f.url }}
+    </a>
+    {% if f.why %}
+      <div class="text-xs text-gray-600 mt-1">{{ f.why }}</div>
+    {% endif %}
+  </li>
+{% endfor %}
+</ul>
+<p class="text-xs text-gray-500 mt-2">
+  Click to open in your own browser. The app never fetches the target for you.
+</p>
+{% endif %}

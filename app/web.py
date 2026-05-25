@@ -1,4 +1,4 @@
-"""Web routes for the Phase 1 minimal UI + Phase 2 query workflow.
+"""Web routes for the Phase 1 minimal UI + Phase 2 query/triage workflows.
 
 Endpoints:
 - ``GET /``           home page (categories + search box)
@@ -6,12 +6,13 @@ Endpoints:
 - ``POST /render``    runs the scope-gated render, returns success or
                       refusal HTML partial
 - ``GET /query``      query page form
-- ``POST /query``     calls the AI adapter (query_gen role), parses
-                      structured JSON suggestions, returns HTMX partial
+- ``POST /query``     calls AI adapter (query_gen), parses suggestions
+- ``GET /triage``     triage page form (paste snippets)
+- ``POST /triage``    calls AI adapter (triage), parses + dedupes
+                      findings server-side, returns ranked partial
 
 The page is intentionally inert: no auto-fetch, no scraping, no
-background navigation. The operator clicks the rendered link in their
-own browser.
+background navigation. The operator clicks links in their own browser.
 """
 
 from __future__ import annotations
@@ -283,5 +284,145 @@ async def query_submit(
             "suggestions": suggestions,
             "target": target_clean,
             "backend": resp.backend,
+        },
+    )
+
+
+_PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
+
+
+def _parse_triage_findings(
+    text: str,
+) -> tuple[list[dict[str, Any]], int, bool]:
+    """Parse triage model output.
+
+    Returns (findings, duplicates_dropped, refused).
+
+    - If output is the literal "OUT_OF_SCOPE" sentinel, returns
+      ([], 0, True). The web layer renders the refusal block.
+    - Otherwise expects a JSON array of finding objects. Server-side
+      dedupes by `dedup_key` (lower-cased, stripped), keeping the first
+      occurrence. Counts the number of duplicates collapsed for the UI.
+    - Findings without a `url` field are dropped silently.
+    """
+    stripped = text.strip()
+    if stripped == "OUT_OF_SCOPE":
+        return [], 0, True
+    try:
+        raw = json.loads(stripped)
+    except json.JSONDecodeError:
+        return [], 0, False
+    if not isinstance(raw, list):
+        return [], 0, False
+    seen: dict[str, dict[str, Any]] = {}
+    dropped = 0
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        url = str(item.get("url", "")).strip()
+        if not url:
+            continue
+        priority = str(item.get("priority", "low")).strip().lower()
+        if priority not in _PRIORITY_ORDER:
+            priority = "low"
+        dedup_key = str(item.get("dedup_key", url)).strip().lower()
+        if not dedup_key:
+            dedup_key = url.lower()
+        if dedup_key in seen:
+            dropped += 1
+            continue
+        seen[dedup_key] = {
+            "url": url,
+            "title": str(item.get("title", "")).strip(),
+            "priority": priority,
+            "why": str(item.get("why", "")).strip(),
+            "dedup_key": dedup_key,
+        }
+    findings = sorted(
+        seen.values(),
+        key=lambda f: (_PRIORITY_ORDER[f["priority"]], f["url"]),
+    )
+    return findings, dropped, False
+
+
+@router.get("/triage", response_class=HTMLResponse)
+def triage_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "triage.html", {})
+
+
+@router.post("/triage", response_class=HTMLResponse)
+async def triage_submit(
+    request: Request,
+    adapter: AdapterDep,
+    target: Annotated[str, Form()] = "",
+    snippets: Annotated[str, Form()] = "",
+) -> HTMLResponse:
+    target_clean = target.strip()
+    snippets_clean = snippets.strip()
+    if not target_clean or not snippets_clean:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "missing input",
+                "detail": "Both target and pasted snippets are required.",
+                "target": target_clean,
+            },
+            status_code=400,
+        )
+    try:
+        resp = await adapter.generate(
+            AIRequest(
+                role="triage",
+                target=target_clean,
+                user_input=snippets_clean,
+            )
+        )
+    except OutOfScopeError as e:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "out of scope",
+                "detail": str(e),
+                "target": target_clean,
+            },
+            status_code=403,
+        )
+    except AIAdapterError as e:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": e.reason.value,
+                "detail": str(e),
+                "target": target_clean,
+            },
+            status_code=_http_for_ai_reason(e.reason),
+        )
+    findings, duplicates, refused = _parse_triage_findings(resp.text)
+    if refused:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "out of scope",
+                "detail": (
+                    "All pasted snippets pointed outside the authorized "
+                    "scope; the AI refused the whole set."
+                ),
+                "target": target_clean,
+            },
+            status_code=422,
+        )
+    return templates.TemplateResponse(
+        request,
+        "_triage_results.html",
+        {
+            "findings": findings,
+            "duplicates": duplicates,
+            "target": target_clean,
+            "backend": resp.backend,
+            "parsed": len(findings) > 0,
         },
     )
