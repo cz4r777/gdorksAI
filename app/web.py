@@ -56,7 +56,7 @@ from app.core.events import (
 )
 from app.core.health import run_health_checks
 from app.core.scope import OutOfScopeError
-from app.core.sessions import list_sessions, save_report
+from app.core.sessions import get_session, list_sessions, save_report
 from app.core.status import compute_snapshot
 
 _TEMPLATES_DIR = "app/templates"
@@ -684,6 +684,46 @@ def sessions_index(request: Request) -> HTMLResponse:
         request,
         "sessions.html",
         {"sessions": sessions, "total": len(sessions)},
+    )
+
+
+@router.get("/sessions/{session_id}", response_class=HTMLResponse)
+def session_detail(request: Request, session_id: str) -> HTMLResponse:
+    session = get_session(session_id)
+    if session is None:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "session not found",
+                "detail": (
+                    f"No saved session with id {session_id!r}. "
+                    "It may have been pruned from runtime/sessions/."
+                ),
+                "target": "",
+            },
+            status_code=404,
+        )
+    try:
+        markdown = session.report_path.read_text(encoding="utf-8")
+    except OSError:
+        markdown = ""
+    return templates.TemplateResponse(
+        request,
+        "session_detail.html",
+        {"session": session, "markdown": markdown},
+    )
+
+
+@router.get("/sessions/{session_id}/report.md")
+def session_report_download(session_id: str) -> Response:
+    session = get_session(session_id)
+    if session is None or not session.report_path.is_file():
+        return Response(content="", media_type="text/markdown", status_code=404)
+    return FileResponse(
+        session.report_path,
+        media_type="text/markdown",
+        filename=f"{session.session_id}.md",
     )
 
 

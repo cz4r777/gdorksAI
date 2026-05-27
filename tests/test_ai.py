@@ -106,7 +106,8 @@ async def test_ollama_happy_path(tmp_path: Path) -> None:
     assert len(ai_calls) == 1
     assert ai_calls[0]["data"]["role"] == "query_gen"
     assert ai_calls[0]["data"]["backend"] == "ollama"
-    assert ai_calls[0]["data"]["target"] == "example.com"
+    # Metadata-only invariant: target MUST NOT appear in the event payload.
+    assert "target" not in ai_calls[0]["data"]
     await adapter.aclose()
 
 
@@ -129,7 +130,8 @@ async def test_scope_rejects_before_backend_call(tmp_path: Path) -> None:
     refused = [e for e in events if e["kind"] == "ai_refused"]
     assert len(refused) == 1
     assert refused[0]["data"]["reason"] == "out_of_scope_target"
-    assert refused[0]["data"]["target"] == "victim.com"
+    # Metadata-only invariant: target MUST NOT appear in the event payload.
+    assert "target" not in refused[0]["data"]
     assert refused[0]["level"] == "warn"
     await adapter.aclose()
 

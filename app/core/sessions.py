@@ -61,6 +61,44 @@ class SessionSummary:
     prompt_filename: str
 
 
+def get_session(session_id: str) -> SessionSummary | None:
+    """Read one session by id. Returns None if dir/meta is missing or malformed.
+
+    session_id is treated as opaque; only direct children of SESSIONS_DIR
+    are reachable. No path traversal.
+    """
+    if (
+        not session_id
+        or "/" in session_id
+        or "\\" in session_id
+        or ".." in session_id
+    ):
+        return None
+    root = sessions_dir() / session_id
+    if not root.is_dir():
+        return None
+    meta_path = root / "meta.json"
+    report_path = root / "report.md"
+    if not meta_path.is_file():
+        return None
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(meta, dict):
+        return None
+    return SessionSummary(
+        session_id=str(meta.get("session_id", session_id)),
+        directory=root,
+        report_path=report_path,
+        meta_path=meta_path,
+        ts=str(meta.get("ts", "")),
+        target=str(meta.get("target", "")),
+        backend=str(meta.get("backend", "")),
+        prompt_filename=str(meta.get("prompt_filename", "")),
+    )
+
+
 def list_sessions(limit: int | None = None) -> list[SessionSummary]:
     """Return saved session summaries, newest-first.
 

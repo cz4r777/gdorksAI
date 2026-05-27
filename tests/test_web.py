@@ -105,7 +105,9 @@ def test_render_success_returns_google_url(client: TestClient) -> None:
     events = read_recent(20)
     rendered = [e for e in events if e.kind == "dork_render"]
     assert len(rendered) == 1
-    assert rendered[0].data["target"] == "example.com"
+    # Metadata-only invariant: target MUST NOT appear in the event payload.
+    assert "target" not in rendered[0].data
+    assert "example.com" not in __import__("json").dumps(rendered[0].data)
     assert rendered[0].data["category"] == "SQLi"
     assert rendered[0].level == "info"
     # No rendered query / URL leak into the event
@@ -127,7 +129,9 @@ def test_render_refused_out_of_scope(client: TestClient) -> None:
     refused = [e for e in read_recent(20) if e.kind == "dork_refused"]
     assert len(refused) == 1
     assert refused[0].data["reason"] == "out_of_scope"
-    assert refused[0].data["target"] == "evil.com"
+    # Metadata-only invariant: target MUST NOT appear in the event payload.
+    assert "target" not in refused[0].data
+    assert "evil.com" not in __import__("json").dumps(refused[0].data)
     assert refused[0].level == "warn"
 
 
