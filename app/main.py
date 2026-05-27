@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="gdorksAI", version="0.0.1", lifespan=lifespan)
+app = FastAPI(title="gdorksAI", version="0.1.0-alpha.1", lifespan=lifespan)
 app.include_router(web_router)
 
 
