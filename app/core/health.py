@@ -28,11 +28,13 @@ from app.core.events import (
     KIND_OLLAMA_MODELS_CHECK,
     KIND_PROMPTS_CHECK,
     KIND_REGISTRY_LOADED,
+    KIND_RUNTIME_WRITABLE_CHECK,
     KIND_SCOPE_LOADED,
     LEVEL_ERROR,
     LEVEL_INFO,
     LEVEL_WARN,
     Event,
+    events_file,
     record,
 )
 from app.core.scope import ScopeGuard
@@ -296,6 +298,46 @@ def probe_prompts() -> Event:
     )
 
 
+def probe_runtime_writable() -> Event:
+    """Check the runtime dirs we'll write into are creatable + writable.
+
+    Tests: parent of EVENTS_FILE and SESSIONS_DIR. If either cannot be
+    created or rejects a write probe, emit warn.
+    """
+    from app.core.sessions import sessions_dir
+
+    targets = {
+        "events_dir": events_file().parent,
+        "sessions_dir": sessions_dir(),
+    }
+    failures: dict[str, str] = {}
+    for label, path in targets.items():
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            probe = path / ".gdorksai_writable"
+            probe.write_text("ok", encoding="utf-8")
+            probe.unlink()
+        except OSError as e:
+            failures[label] = type(e).__name__
+    if failures:
+        return record(
+            KIND_RUNTIME_WRITABLE_CHECK,
+            "runtime",
+            f"runtime dirs not writable: {', '.join(failures)}",
+            level=LEVEL_WARN,
+            targets={k: str(v) for k, v in targets.items()},
+            failures=failures,
+        )
+    return record(
+        KIND_RUNTIME_WRITABLE_CHECK,
+        "runtime",
+        "runtime dirs writable",
+        level=LEVEL_INFO,
+        targets={k: str(v) for k, v in targets.items()},
+        failures={},
+    )
+
+
 async def run_health_checks() -> list[Event]:
     """Run all probes; emit one event per probe; return them in order.
 
@@ -309,6 +351,7 @@ async def run_health_checks() -> list[Event]:
     events.append(probe_registry())
     events.append(probe_scope())
     events.append(probe_prompts())
+    events.append(probe_runtime_writable())
     counts = {LEVEL_INFO: 0, LEVEL_WARN: 0, LEVEL_ERROR: 0}
     for e in events:
         counts[e.level] = counts.get(e.level, 0) + 1

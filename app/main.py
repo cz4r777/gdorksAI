@@ -1,9 +1,11 @@
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
 from app.core.events import KIND_ROUTES_MOUNTED, KIND_STARTUP, LEVEL_INFO, record
+from app.core.readiness import run_startup_readiness
 from app.web import router as web_router
 
 
@@ -25,6 +27,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         level=LEVEL_INFO,
         routes=route_paths,
     )
+    # Run a startup readiness pass unless explicitly disabled (e.g. in tests
+    # where probing Ollama on every TestClient init would be noisy).
+    if os.environ.get("GDORKSAI_SKIP_STARTUP_READINESS") != "1":
+        try:
+            await run_startup_readiness()
+        except Exception:  # noqa: BLE001 — diagnostics must never break boot
+            pass
     yield
 
 
