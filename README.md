@@ -8,7 +8,7 @@ Built for authorized engagements only. No scraping, no headless browser, no anti
 
 ## Status
 
-Phase 1 surface is implemented and Phase 2/3 routes render as "coming soon" via live capability detection. What's on `main` vs in flight is exposed in the UI itself — open `/diagnostics` and the nav bar's build-state badge shows the truth.
+Phase 1, 2, and 3 surfaces are all on `main`. The nav bar's build-state badge reads `phase-3` and every workflow stage (Home, Diagnostics, Status, Query, Triage, Pivot, Report) is mounted. What's actually running is exposed in the UI itself — open `/status` or `/diagnostics` for a live snapshot derived from the diagnostic event log.
 
 ## Working style
 
@@ -47,7 +47,7 @@ Non-negotiable for v1. Changes require a security ticket.
 
 ## Quickstart
 
-Python 3.11+. Ollama is optional in Phase 1 (no AI calls yet); the diagnostics page will simply show it as unreachable.
+Python 3.11+. Ollama is required for the Phase 2/3 AI workflows (`/query`, `/triage`, `/pivot`, `/report`); without it, the diagnostics page shows it as unreachable and AI routes return 503. If you set `GROQ_API_KEY`, the adapter falls back to Groq automatically when Ollama is down.
 
 ```bash
 git clone https://github.com/cz4r777/gdorksAI.git
@@ -81,15 +81,21 @@ uvicorn app.main:app --reload
 
 | Route | Method | What |
 |---|---|---|
-| `/` | GET | Home — categories + search |
+| `/` | GET | Home — categories + search box (with category dropdown) |
 | `/search` | GET | HTMX partial; full-text + category filter, capped at 200 hits |
+| `/category/{name}` | GET | One-category page, dorks grouped by source file |
+| `/dorks?page=N&per=M` | GET | Paginated flat all-dorks view (per ≤ 200) |
 | `/render` | POST | Scope-gated; returns the Google URL for the operator to click. `400 / 403 / 404` for invalid / out-of-scope / unknown dork |
 | `/diagnostics` | GET | Last 200 events from `runtime/events.jsonl` |
 | `/diagnostics/refresh` | POST | Run all health probes, re-render the event table |
 | `/diagnostics.jsonl` | GET | Raw JSONL export |
+| `/status` | GET | Curated snapshot per-component (latest event per kind) |
+| `/status/refresh` | POST | Re-run probes, swap the snapshot cards |
+| `/query` | GET/POST | NL intent → AI-drafted dork(s); JSON parsed into clickable URLs |
+| `/triage` | GET/POST | Paste result snippets → AI ranks + server-side dedupes findings |
+| `/pivot` | GET/POST | Paste a triaged finding → AI suggests same-target adjacent dorks |
+| `/report` | GET/POST | Paste a session log → AI writes Markdown report; saved under `runtime/sessions/<id>/` |
 | `/healthz` | GET | `{"status":"ok"}` liveness |
-
-Phase 2/3 routes (`/query`, `/triage`, `/pivot`, `/report`) are wired into the nav menu as "coming soon" until their handlers mount.
 
 ## Health probes
 
@@ -105,21 +111,27 @@ Phase 2/3 routes (`/query`, `/triage`, `/pivot`, `/report`) are wired into the n
 
 ```
 app/
-  main.py                 FastAPI entry, lifespan, /healthz
-  web.py                  routes: / · /search · /render · /diagnostics
-  capabilities.py         live route detection -> nav menu + build state
+  main.py                 FastAPI entry, lifespan emits startup events, /healthz
+  web.py                  routes: home/search/render/category/dorks/diagnostics/
+                          status/query/triage/pivot/report
+  capabilities.py         live route detection -> nav menu + phase build state
   core/
     dorks.py              registry: parse corpus, search, scope-gated render
     scope.py              scope guard: exact + wildcard host match, refuse-by-default
+    ai.py                 async adapter — Ollama primary, Groq fallback, scope rails,
+                          ai_call/ai_refused event emission
+    prompts/              <role>_v<n>.md: query_gen, triage, pivot, report
     events.py             append-only JSONL event log (metadata only)
     health.py             5 probes; each emits a typed event
+    status.py             curated snapshot over the latest event per kind
+    sessions.py           /report writes runtime/sessions/<id>/report.md + meta.json
   templates/              Jinja2 + HTMX (htmx 1.9.12 + Tailwind via CDN)
 docs/                     ARCHITECTURE, ROADMAP, PIPELINE, WORKFLOW, SECURITY, AI_INTEGRATION
 tests/                    pytest; mocks HTTP via httpx.MockTransport
 .github/                  issue/PR templates, labels.yml, ci.yml
 scripts/                  setup-labels.sh
 data/dorks/               (gitignored) where you put the dork corpus
-runtime/                  (gitignored) scope.json, events.jsonl
+runtime/                  (gitignored) scope.json, events.jsonl, sessions/<id>/
 ```
 
 ## Framework (how this project is run)

@@ -20,26 +20,30 @@ Bootstrap repo: docs, ticket templates, CI, project skeleton. No runtime feature
 ## Phase 2 — Local AI integration
 - `app/core/ai.py` adapter with Ollama primary + Groq fallback.
 - `/query` page: NL → dork suggestion (role: `query_gen`).
-- `/triage` page: paste pasted result snippets, AI ranks + dedupes (role: `triage`).
+- `/triage` page: paste result snippets, AI ranks + dedupes (role: `triage`).
 
 **Exit criteria:**
 - [x] Async AI adapter with Ollama primary + Groq fallback, scope-gated, no silent degradation (P2-T1)
-- [ ] /query page wired to query_gen role (P2-T2)
-- [ ] /triage page wired to triage role (P2-T3)
+- [x] /query page wired to query_gen role (P2-T2)
+- [x] /triage page wired to triage role (P2-T3)
 
 ## Phase 3 — Pivot + report
 - `/pivot` page: AI suggests related dorks based on a triaged finding (role: `pivot`).
 - `/report` page: AI generates Markdown report for the session (role: `report`).
 - Session persistence under `runtime/sessions/<id>/`.
-**Exit criteria:** full recon session round-trip produces a saved report file.
 
-## Phase 4 — Hardening + release
-- Tests: pytest for registry, scope guard, AI adapter (mocked).
+**Exit criteria:**
+- [x] /pivot page wired to pivot role (P3-T1)
+- [x] /report page wired to report role (A2)
+- [x] Session persistence to `runtime/sessions/<id>/report.md` + `meta.json` (A3)
+
+## Phase 4 — Hardening + alpha release
+- Tests: pytest for registry, scope guard, AI adapter (mocked), events, health, status, sessions.
 - Lint: ruff, mypy strict on `app/core/`.
 - CI: GitHub Actions runs lint + tests on push/PR.
-- Docs: usage walkthrough with screenshots, threat-model section in SECURITY.md.
-- Tagged `v0.1.0` release.
-**Exit criteria:** green CI, README quickstart works on a fresh clone.
+- Diagnostic event log wired into AI calls (A1).
+- Docs truth-pass (A4); alpha cut (A5).
+**Exit criteria:** green CI, README quickstart works on a fresh clone, `v0.1.0-alpha.1` tagged.
 
 ## Phase 5 — Stretch (not committed)
 Candidates, choose later:
