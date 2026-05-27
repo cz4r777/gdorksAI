@@ -27,7 +27,7 @@ import json
 from typing import Annotated, Any
 from urllib.parse import quote_plus
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 
@@ -727,9 +727,49 @@ def session_report_download(session_id: str) -> Response:
     )
 
 
+def _prefill_from_session(session_id: str) -> tuple[object, str, str]:
+    """Build (session_summary, target, session_log) for the /report prefill.
+
+    Returns (None, "", "") if the session is missing.
+    """
+    session = get_session(session_id)
+    if session is None:
+        return None, "", ""
+    try:
+        body = session.report_path.read_text(encoding="utf-8")
+    except OSError:
+        body = ""
+    seed = (
+        f"# Composed from prior session {session.session_id}\n"
+        f"# target={session.target} backend={session.backend} "
+        f"prompt={session.prompt_filename} ts={session.ts}\n\n"
+        f"{body}\n\n"
+        f"# Continue below with new findings, pivots, etc.\n"
+    )
+    return session, session.target, seed
+
+
 @router.get("/report", response_class=HTMLResponse)
-def report_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "report.html", {})
+def report_page(
+    request: Request,
+    from_session_id: Annotated[str, Query(alias="from")] = "",
+) -> HTMLResponse:
+    session = None
+    prefill_target = ""
+    prefill_session_log = ""
+    if from_session_id:
+        session, prefill_target, prefill_session_log = _prefill_from_session(
+            from_session_id
+        )
+    return templates.TemplateResponse(
+        request,
+        "report.html",
+        {
+            "from_session": session,
+            "prefill_target": prefill_target,
+            "prefill_session_log": prefill_session_log,
+        },
+    )
 
 
 @router.post("/report", response_class=HTMLResponse)
