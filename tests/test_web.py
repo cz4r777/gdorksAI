@@ -155,16 +155,23 @@ def test_home_marks_phase1_stages_available(client: TestClient) -> None:
     assert 'data-stage="home"' in body and 'data-available="true"' in body
 
 
-def test_home_marks_phase2_stages_coming_soon(client: TestClient) -> None:
+def test_home_marks_all_stages_available_after_a2(client: TestClient) -> None:
+    """Once /report mounts (A2), every menu stage is real — no 'coming soon'."""
     r = client.get("/")
     body = r.text
-    assert "coming soon" in body.lower()
-    # /query, /triage, and /pivot are mounted now; only report/status remain
-    # coming-soon on this branch.
-    for stage in ("report", "status"):
+    assert "coming soon" not in body.lower()
+    for stage in (
+        "home",
+        "diagnostics",
+        "status",
+        "query",
+        "triage",
+        "pivot",
+        "report",
+    ):
         assert f'data-stage="{stage}"' in body
-    # at least one unavailable stage rendered as aria-disabled
-    assert 'aria-disabled="true"' in body
+    # No aria-disabled stages remain
+    assert 'aria-disabled="true"' not in body
 
 
 def test_diagnostics_page_renders_empty_when_no_events(client: TestClient) -> None:
