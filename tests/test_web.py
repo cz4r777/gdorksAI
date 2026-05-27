@@ -99,6 +99,17 @@ def test_render_success_returns_google_url(client: TestClient) -> None:
     assert "example.com" in body
     assert 'target="_blank"' in body
     assert 'rel="noopener noreferrer"' in body
+    # dork_render event emitted with metadata
+    from app.core.events import read_recent
+
+    events = read_recent(20)
+    rendered = [e for e in events if e.kind == "dork_render"]
+    assert len(rendered) == 1
+    assert rendered[0].data["target"] == "example.com"
+    assert rendered[0].data["category"] == "SQLi"
+    assert rendered[0].level == "info"
+    # No rendered query / URL leak into the event
+    assert "google.com" not in __import__("json").dumps(rendered[0].data)
 
 
 def test_render_refused_out_of_scope(client: TestClient) -> None:
@@ -110,6 +121,14 @@ def test_render_refused_out_of_scope(client: TestClient) -> None:
     assert r.status_code == 403
     assert "out of scope" in r.text.lower()
     assert "google.com/search" not in r.text
+    # dork_refused event with reason=out_of_scope
+    from app.core.events import read_recent
+
+    refused = [e for e in read_recent(20) if e.kind == "dork_refused"]
+    assert len(refused) == 1
+    assert refused[0].data["reason"] == "out_of_scope"
+    assert refused[0].data["target"] == "evil.com"
+    assert refused[0].level == "warn"
 
 
 def test_render_unknown_dork_id(client: TestClient) -> None:
@@ -119,6 +138,12 @@ def test_render_unknown_dork_id(client: TestClient) -> None:
     )
     assert r.status_code == 404
     assert "unknown dork id" in r.text.lower()
+    # dork_refused event with reason=unknown_dork_id
+    from app.core.events import read_recent
+
+    refused = [e for e in read_recent(20) if e.kind == "dork_refused"]
+    assert len(refused) == 1
+    assert refused[0].data["reason"] == "unknown_dork_id"
 
 
 def test_render_empty_target(client: TestClient) -> None:
@@ -129,6 +154,12 @@ def test_render_empty_target(client: TestClient) -> None:
     )
     assert r.status_code == 400
     assert "invalid target" in r.text.lower()
+    # dork_refused event with reason=invalid_target
+    from app.core.events import read_recent
+
+    refused = [e for e in read_recent(20) if e.kind == "dork_refused"]
+    assert len(refused) == 1
+    assert refused[0].data["reason"] == "invalid_target"
 
 
 def test_healthz_still_works(client: TestClient) -> None:

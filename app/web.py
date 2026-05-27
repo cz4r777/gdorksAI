@@ -45,7 +45,15 @@ from app.core.dorks import (
     InvalidTargetError,
     load_default_registry,
 )
-from app.core.events import events_file, read_recent
+from app.core.events import (
+    KIND_DORK_REFUSED,
+    KIND_DORK_RENDER,
+    LEVEL_INFO,
+    LEVEL_WARN,
+    events_file,
+    read_recent,
+    record,
+)
 from app.core.health import run_health_checks
 from app.core.scope import OutOfScopeError
 from app.core.sessions import save_report
@@ -303,9 +311,24 @@ def render(
     dork_id: Annotated[str, Form()],
     target: Annotated[str, Form()],
 ) -> HTMLResponse:
+    target_clean = target.strip()
+    try:
+        record_obj = registry.get(dork_id) if dork_id else None
+    except DorkNotFoundError:
+        record_obj = None
+    category = record_obj.category if record_obj is not None else ""
+    source_file = record_obj.source_file if record_obj is not None else ""
     try:
         query = registry.render(dork_id, target)
     except InvalidTargetError as e:
+        record(
+            KIND_DORK_REFUSED,
+            "dorks",
+            "dork render refused: invalid target",
+            level=LEVEL_WARN,
+            reason="invalid_target",
+            dork_id=dork_id,
+        )
         return templates.TemplateResponse(
             request,
             "_render_refused.html",
@@ -313,6 +336,16 @@ def render(
             status_code=400,
         )
     except OutOfScopeError as e:
+        record(
+            KIND_DORK_REFUSED,
+            "dorks",
+            "dork render refused: out of scope",
+            level=LEVEL_WARN,
+            reason="out_of_scope",
+            target=target_clean,
+            dork_id=dork_id,
+            category=category,
+        )
         return templates.TemplateResponse(
             request,
             "_render_refused.html",
@@ -320,19 +353,38 @@ def render(
             status_code=403,
         )
     except DorkNotFoundError as e:
+        record(
+            KIND_DORK_REFUSED,
+            "dorks",
+            "dork render refused: unknown dork id",
+            level=LEVEL_WARN,
+            reason="unknown_dork_id",
+            target=target_clean,
+            dork_id=dork_id,
+        )
         return templates.TemplateResponse(
             request,
             "_render_refused.html",
             {"reason": "unknown dork id", "detail": str(e), "target": target},
             status_code=404,
         )
+    record(
+        KIND_DORK_RENDER,
+        "dorks",
+        f"dork rendered: {category or 'uncategorized'}",
+        level=LEVEL_INFO,
+        target=target_clean,
+        dork_id=dork_id,
+        category=category,
+        source_file=source_file,
+    )
     return templates.TemplateResponse(
         request,
         "_render_success.html",
         {
             "query": query,
             "url": google_search_url(query),
-            "target": target.strip(),
+            "target": target_clean,
         },
     )
 

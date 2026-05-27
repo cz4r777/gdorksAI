@@ -67,6 +67,8 @@ KIND_HEALTH_CHECK = "health_check"
 KIND_SCOPE_REFUSED = "scope_refused"
 KIND_AI_CALL = "ai_call"
 KIND_AI_REFUSED = "ai_refused"
+KIND_DORK_RENDER = "dork_render"
+KIND_DORK_REFUSED = "dork_refused"
 KIND_SESSION_SAVED = "session_saved"
 KIND_ERROR = "error"
 
