@@ -143,12 +143,14 @@ Full rules: [docs/PIPELINE.md](docs/PIPELINE.md) and [docs/WORKFLOW.md](docs/WOR
 
 ## Documentation
 
+- [Operations manual](docs/OPERATIONS.md) — daily checks, backups, rollback, common breakage
 - [Architecture](docs/ARCHITECTURE.md) — system sketch, components, data flow
 - [Roadmap](docs/ROADMAP.md) — phase plan and exit criteria
 - [Pipeline](docs/PIPELINE.md) — how changes flow from ticket to pushed code and landing
 - [Workflow](docs/WORKFLOW.md) — roles, ticket types, kanban
 - [AI integration](docs/AI_INTEGRATION.md) — Ollama / Groq adapter, prompt versioning, scope-guard integration
 - [Security](docs/SECURITY.md) — ethics, scope-guard contract, threat model, disclosure
+- [Changelog](CHANGELOG.md) — what landed in each release
 
 ## Attribution
 
