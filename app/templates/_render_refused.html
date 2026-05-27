@@ -1,10 +1,23 @@
 <div class="border-l-4 border-red-500 bg-red-50 p-3 text-sm">
   <div class="font-medium">Refused: {{ reason }}</div>
   <div class="text-xs text-gray-700 mt-1">{{ detail }}</div>
-  {% if reason == "out of scope" %}
-  <p class="text-xs text-gray-500 mt-2">
-    To allow <code>{{ target }}</code>, add it to <code>runtime/scope.json</code>
-    (only if you are authorized for that engagement) and restart the app.
-  </p>
+  {% if reason == "out of scope" and target %}
+  <div class="mt-3 border-t border-red-200 pt-3" data-testid="authorize-block">
+    <p class="text-xs text-gray-700 mb-2">
+      Click below to authorize <code>{{ target }}</code> for this engagement.
+      You confirm you have written authorization to test it.
+    </p>
+    <form action="/scope/authorize" method="post" class="flex items-center gap-2">
+      <input type="hidden" name="target" value="{{ target }}">
+      <input type="hidden" name="next_path" value="/">
+      <button class="bg-red-700 hover:bg-red-800 text-white text-xs px-3 py-1 rounded"
+              data-testid="authorize-button">
+        I am authorized — add to scope
+      </button>
+      <span class="text-[10px] text-gray-500">
+        writes to <code>runtime/scope.json</code>
+      </span>
+    </form>
+  </div>
   {% endif %}
 </div>

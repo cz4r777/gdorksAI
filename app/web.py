@@ -55,7 +55,7 @@ from app.core.events import (
     record,
 )
 from app.core.health import run_health_checks
-from app.core.scope import OutOfScopeError
+from app.core.scope import OutOfScopeError, ScopeGuard, reset_default_guard
 from app.core.sessions import get_session, list_sessions, save_report
 from app.core.status import compute_snapshot
 
@@ -762,6 +762,60 @@ async def pivot_submit(
         },
         prefill=prefill,
     )
+
+
+@router.post("/scope/authorize", response_class=HTMLResponse)
+def scope_authorize(
+    request: Request,
+    target: Annotated[str, Form()] = "",
+    next_path: Annotated[str, Form()] = "/",
+) -> Response:
+    """One-click 'I am authorized for this target' button.
+
+    Adds the operator-supplied target to runtime/scope.json (creating
+    the file if missing) and resets the module-level default guard so
+    the next AI/render call picks up the new entry. Redirects back to
+    next_path (defaulting to /) so the operator can retry.
+
+    Security note: this endpoint is the UI form of the same authorization
+    step an operator would otherwise do by editing scope.json. The button
+    click is the authorization. It does NOT bypass the scope guard — it
+    extends it with operator consent.
+    """
+    target_clean = target.strip()
+    if not target_clean:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "invalid target",
+                "detail": "Cannot authorize an empty target.",
+                "target": "",
+            },
+            status_code=400,
+        )
+    try:
+        guard = ScopeGuard()
+        guard.add_target(target_clean)
+        # Bust the module-level default singleton so the next call re-reads
+        # the scope file.
+        reset_default_guard()
+    except (OSError, ValueError) as e:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "could not update scope file",
+                "detail": str(e),
+                "target": target_clean,
+            },
+            status_code=500,
+        )
+    # Sanitize next_path so we don't redirect to an external URL.
+    redirect_to = next_path if next_path.startswith("/") else "/"
+    from fastapi.responses import RedirectResponse
+
+    return RedirectResponse(url=redirect_to, status_code=303)
 
 
 @router.get("/sessions", response_class=HTMLResponse)
