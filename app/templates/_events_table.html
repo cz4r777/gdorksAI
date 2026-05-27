@@ -1,0 +1,40 @@
+{% if events %}
+<table id="events-table" class="w-full text-xs border rounded bg-white">
+  <thead class="bg-gray-100 text-left">
+    <tr>
+      <th class="p-2">ts</th>
+      <th class="p-2">level</th>
+      <th class="p-2">component</th>
+      <th class="p-2">kind</th>
+      <th class="p-2">summary</th>
+      <th class="p-2">data</th>
+    </tr>
+  </thead>
+  <tbody class="divide-y">
+    {% for e in events %}
+    <tr data-level="{{ e.level }}">
+      <td class="p-2 font-mono text-[10px]">{{ e.ts }}</td>
+      <td class="p-2">
+        {% if e.level == "error" %}
+          <span class="px-2 py-0.5 rounded bg-red-100 text-red-800">error</span>
+        {% elif e.level == "warn" %}
+          <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800">warn</span>
+        {% else %}
+          <span class="px-2 py-0.5 rounded bg-green-100 text-green-800">info</span>
+        {% endif %}
+      </td>
+      <td class="p-2 font-mono">{{ e.component }}</td>
+      <td class="p-2 font-mono">{{ e.kind }}</td>
+      <td class="p-2">{{ e.summary }}</td>
+      <td class="p-2 font-mono text-[10px]">
+        {% if e.data %}<pre class="whitespace-pre-wrap break-all">{{ e.data | tojson }}</pre>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p id="events-table" class="text-sm text-gray-500">
+  No events yet. Click <strong>Run health check</strong> above to emit some.
+</p>
+{% endif %}

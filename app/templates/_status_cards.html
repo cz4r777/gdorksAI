@@ -1,0 +1,44 @@
+{% set s = snapshot %}
+<div id="status-cards" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  {% set rows = [
+    ("ollama", "Ollama", s.ollama),
+    ("groq", "Groq fallback", s.groq),
+    ("registry", "Dork registry", s.registry),
+    ("scope", "Scope guard", s.scope),
+    ("prompts", "Prompts", s.prompts)
+  ] %}
+  {% for key, label, evt in rows %}
+  <div class="border rounded bg-white p-3" data-component="{{ key }}">
+    <div class="flex items-center justify-between mb-1">
+      <div class="font-medium text-sm">{{ label }}</div>
+      {% if evt is none %}
+        <span class="text-[10px] px-2 py-0.5 rounded bg-gray-200 text-gray-800"
+              data-level="missing">not yet observed</span>
+      {% elif evt.level == "error" %}
+        <span class="text-[10px] px-2 py-0.5 rounded bg-red-100 text-red-800"
+              data-level="error">error</span>
+      {% elif evt.level == "warn" %}
+        <span class="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800"
+              data-level="warn">warn</span>
+      {% else %}
+        <span class="text-[10px] px-2 py-0.5 rounded bg-green-100 text-green-800"
+              data-level="info">ok</span>
+      {% endif %}
+    </div>
+    {% if evt is not none %}
+      <div class="text-xs text-gray-700">{{ evt.summary }}</div>
+      <div class="text-[10px] text-gray-500 mt-1 font-mono">
+        seen at {{ evt.ts }}
+      </div>
+      {% if evt.data %}
+        <pre class="text-[10px] mt-2 whitespace-pre-wrap break-all text-gray-600">{{ evt.data | tojson }}</pre>
+      {% endif %}
+    {% else %}
+      <div class="text-xs text-gray-500">
+        No probe event recorded yet. Click <strong>Run probes now</strong> above
+        to populate.
+      </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>

@@ -10,13 +10,28 @@ Built for authorized engagements only. No scraping, no headless browser, no anti
 
 Phase 1 surface is implemented and Phase 2/3 routes render as "coming soon" via live capability detection. What's on `main` vs in flight is exposed in the UI itself — open `/diagnostics` and the nav bar's build-state badge shows the truth.
 
-| Phase | Scope | State |
-|---|---|---|
-| 0 | Framework, CI, docs, ticket system | merged to `main` |
-| 1 | Registry, scope guard, web UI, event log, health probes, nav menu | implemented across PRs #14, #15, #18 |
-| 2 | Local AI adapter (Ollama → Groq); `/query`, `/triage` | designed; coding next |
-| 3 | `/pivot`, `/report`, session persistence | planned |
-| 4 | Hardening, security headers, vendored assets, `v0.1.0` | planned |
+## Working style
+
+This project now prefers immediate pushed checkpoints over long local-only holds:
+
+1. make a code change
+2. commit it
+3. push it immediately
+4. use the pushed branch as the backup / rollback point
+5. review or merge later when convenient
+
+If a change is risky, make smaller commits and push each checkpoint. The goal is to keep progress visible, reversible, and not blocked on stacked merge choreography.
+
+Before any batch of related edits, take a fresh backup checkpoint first:
+
+1. confirm the current branch is in a known-good state
+2. commit any finished work
+3. push that checkpoint
+4. start the next batch from there
+
+That backup-first rule is the default for coder work. Do not wait for a special merge window before pushing progress.
+
+## What it does (target state)
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for phase exit criteria.
 
@@ -109,8 +124,8 @@ runtime/                  (gitignored) scope.json, events.jsonl
 
 ## Framework (how this project is run)
 
-- **Roles.** Supervisor (docs, ticket triage, design sign-off), Coder (one ticket → one branch → one PR), Security (per-PR audit against a focus list), Operator (merge decisions). Each lives in a separate session; handovers cross sessions as single-block ASCII blocks.
-- **Pipeline.** `Ticket → Design → Branch → Implement → CI gate → Security review → Operator merge`. CI runs `ruff` + `mypy --strict app/core` + `pytest` + import smoke. Red CI blocks review.
+- **Roles.** Supervisor (docs, ticket triage, design sign-off), Coder (ticket work and pushed checkpoints), Security (review against a focus list), Operator (accepts the next working baseline). Each lives in a separate session; handovers cross sessions as single-block ASCII blocks.
+- **Pipeline.** `Ticket → Design → Branch → Backup checkpoint → Implement → Commit → Push → CI/use → Review → Land when convenient`. CI runs `ruff` + `mypy --strict app/core` + `pytest` + import smoke. Red CI blocks landing, not visibility.
 - **Tickets.** Four templates in `.github/ISSUE_TEMPLATE/`: `feature`, `bug`, `dork-category`, `security`. Title format `P<phase>-T<n>: …` so they sort.
 - **Labels.** Apply with `bash scripts/setup-labels.sh cz4r777/gdorksAI`.
 
@@ -120,7 +135,7 @@ Full rules: [docs/PIPELINE.md](docs/PIPELINE.md) and [docs/WORKFLOW.md](docs/WOR
 
 - [Architecture](docs/ARCHITECTURE.md) — system sketch, components, data flow
 - [Roadmap](docs/ROADMAP.md) — phase plan and exit criteria
-- [Pipeline](docs/PIPELINE.md) — change flow
+- [Pipeline](docs/PIPELINE.md) — how changes flow from ticket to pushed code and landing
 - [Workflow](docs/WORKFLOW.md) — roles, ticket types, kanban
 - [AI integration](docs/AI_INTEGRATION.md) — Ollama / Groq adapter, prompt versioning, scope-guard integration
 - [Security](docs/SECURITY.md) — ethics, scope-guard contract, threat model, disclosure

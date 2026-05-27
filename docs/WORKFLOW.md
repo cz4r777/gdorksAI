@@ -1,15 +1,15 @@
 # gdorksAI — Team Workflow & Ticket System
 
-Two roles operate on this project. Both work through GitHub Issues + PRs.
+Two roles operate on this project. Both work through GitHub Issues plus pushed branches. PRs are still useful, but they are no longer the only way work becomes visible.
 
 ## Roles
 
 | Role | Who | Authority |
 |------|-----|-----------|
-| Supervisor | Claude (designated session) | Files tickets, signs off designs, reviews PRs, owns ROADMAP & PIPELINE |
-| Implementer | Pentester / operator + Claude (per-task) | Picks tickets, writes code, opens PRs |
+| Supervisor | Claude (designated session) | Files tickets, signs off designs, reviews pushed work, owns ROADMAP & PIPELINE |
+| Implementer | Pentester / operator + Claude (per-task) | Picks tickets, writes code, commits, pushes, opens PRs when useful |
 
-The supervisor never merges its own PRs; the implementer never closes a ticket without a passing CI gate.
+The supervisor does not hide behind merge bureaucracy. The implementer should push work as it is produced so the operator always has a remote backup and rollback point.
 
 ## Ticket types
 
@@ -47,13 +47,13 @@ Bootstrap via `scripts/setup-labels.sh <owner/repo>` (see `.github/labels.yml`).
 - After design sign-off → **Ready**. Bugs/dork-categories skip directly here.
 - Implementer pulls from **Ready** (top of column = highest priority).
 - **In progress** has a WIP limit of 2 per implementer.
-- **Review** = PR open + CI green. Stays until merged.
+- **Review** = pushed branch or PR available for inspection, with CI feedback where available.
 - **Done** auto-archives weekly.
 
 ## Definition of Done (per ticket)
 
 A ticket is Done only when ALL of:
-- [ ] PR merged into `main`
+- [ ] Code landed on `main` or the operator explicitly accepted the pushed branch as the new working baseline
 - [ ] CI green on the merge commit
 - [ ] Acceptance criteria from the issue all checked off
 - [ ] If feature: ROADMAP exit-criteria updated
@@ -63,11 +63,24 @@ A ticket is Done only when ALL of:
 
 - Discussion on the issue itself (not Slack, not chat). Future contributors should be able to reconstruct the *why* from the issue thread alone.
 - Decisions captured in the ticket via a `## Decision` heading and a one-line summary.
+- If implementation exists locally for more than one meaningful edit pass, push it. Local-only work is now considered a workflow smell unless the operator asked for a temporary hold.
+- Before each batch of related edits, make or confirm a pushed backup checkpoint first.
 
 ## Supervisor cadence
 
 Every working session, the supervisor:
 1. Triages new Backlog issues (assigns labels, type, priority).
-2. Reviews open PRs.
+2. Reviews open PRs and pushed branches.
 3. Files follow-ups discovered during review.
 4. Posts a status line on this week's milestone if one is active.
+
+## Preferred execution style
+
+- Before a batch of edits:
+  - confirm the last pushed commit is a safe rollback point, or
+  - make a fresh commit and push before continuing
+- After each meaningful code update: commit, then push.
+- Use pushed commits as incremental backups and rollback points.
+- Keep work moving; do not let stacked merge queues stop unrelated progress.
+- Use PRs when they add clarity, not as mandatory gates for every small step.
+- Do not repeatedly ask the operator to merge before continuing unless landing order creates a real technical conflict.

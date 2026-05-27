@@ -21,7 +21,11 @@ Bootstrap repo: docs, ticket templates, CI, project skeleton. No runtime feature
 - `app/core/ai.py` adapter with Ollama primary + Groq fallback.
 - `/query` page: NL → dork suggestion (role: `query_gen`).
 - `/triage` page: paste pasted result snippets, AI ranks + dedupes (role: `triage`).
-**Exit criteria:** end-to-end NL→dork→triage works offline with Ollama; Groq fallback verified.
+
+**Exit criteria:**
+- [x] Async AI adapter with Ollama primary + Groq fallback, scope-gated, no silent degradation (P2-T1)
+- [ ] /query page wired to query_gen role (P2-T2)
+- [ ] /triage page wired to triage role (P2-T3)
 
 ## Phase 3 — Pivot + report
 - `/pivot` page: AI suggests related dorks based on a triaged finding (role: `pivot`).

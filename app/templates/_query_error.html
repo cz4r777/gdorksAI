@@ -1,0 +1,20 @@
+<div class="border-l-4 border-red-500 bg-red-50 p-3 text-sm">
+  <div class="font-medium">Refused: {{ reason }}</div>
+  <div class="text-xs text-gray-700 mt-1">{{ detail }}</div>
+  {% if reason == "out of scope" %}
+  <p class="text-xs text-gray-500 mt-2">
+    To allow <code>{{ target }}</code>, add it to <code>runtime/scope.json</code>
+    (only if you are authorized for that engagement) and restart the app.
+  </p>
+  {% elif reason in ("no_backend_available", "ollama_unreachable", "ollama_model_missing", "groq_not_configured") %}
+  <p class="text-xs text-gray-500 mt-2">
+    The AI backend is not available right now. Check the
+    <a href="/status" class="underline">Status</a> page for diagnostics.
+  </p>
+  {% elif reason == "out_of_scope_output" %}
+  <p class="text-xs text-gray-500 mt-2">
+    The model tried to reference a domain outside the authorized scope.
+    The response was refused; no URL was rendered.
+  </p>
+  {% endif %}
+</div>

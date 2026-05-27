@@ -1,18 +1,26 @@
 # gdorksAI — Development Pipeline
 
-The pipeline defines how a change moves from idea to merged code. Every change passes the same stages.
+The pipeline defines how a change moves from idea to committed, pushed, reviewable code. The project now prefers immediate remote checkpoints over long-lived local-only branches and stacked merge holds.
 
 ## Stages
 
 ```
-┌──────────┐   ┌─────────┐   ┌────────┐   ┌──────────┐   ┌────────┐   ┌──────┐
-│  Ticket  │──▶│ Design  │──▶│ Branch │──▶│ Implement│──▶│ Review │──▶│ Merge│
-└──────────┘   └─────────┘   └────────┘   └──────────┘   └────────┘   └──────┘
-                                                              │
-                                                              ▼
-                                                         ┌─────────┐
-                                                         │  CI gate│
-                                                         └─────────┘
+┌──────────┐   ┌─────────┐   ┌────────┐   ┌─────────────────┐   ┌──────────┐   ┌────────┐   ┌───────────┐
+│  Ticket  │──▶│ Design  │──▶│ Branch │──▶│ Backup checkpoint│──▶│ Implement│──▶│ Commit │──▶│ Push update │
+└──────────┘   └─────────┘   └────────┘   └─────────────────┘   └──────────┘   └────────┘   └─────┬─────┘
+                                                                                                      │
+                                                                                                      ▼
+                                                                                                ┌─────────┐
+                                                                                                │CI / use │
+                                                                                                └────┬────┘
+                                                                                                     ▼
+                                                                                                ┌────────┐
+                                                                                                │ Review │
+                                                                                                └────┬───┘
+                                                                                                     ▼
+                                                                                                ┌──────┐
+                                                                                                │ Land  │
+                                                                                                └──────┘
 ```
 
 ### 1. Ticket
@@ -30,35 +38,63 @@ The pipeline defines how a change moves from idea to merged code. Every change p
   - `feature/12-dork-registry`
   - `bug/27-scope-guard-bypass`
   - `dork/41-add-supabase-category`
-- Always branch from `main`. No long-lived feature branches.
+- Branch from `main` when practical, but do not block progress on local base purity. Rebase later if needed.
+- Long-lived hidden local branches are discouraged. If the work exists, it should usually be pushed.
 
-### 4. Implement
-- One ticket = one PR. Scope creep gets a follow-up ticket.
+### 4. Backup checkpoint
+- Before each batch of related modifications, create a known-good rollback point first.
+- Minimum pattern:
+  - commit current stable work
+  - push it
+  - then start the next edit batch
+- If nothing changed since the last clean checkpoint, explicitly treat the latest pushed commit as the backup for the next batch.
+
+### 5. Implement
+- One ticket = one branch. A PR is optional until review or landing is needed.
 - Commit messages: imperative, ≤72 char subject, body explains *why*.
 - Tests required for code touching `app/core/`. Optional for `app/templates/` and dork-data PRs.
 
-### 5. CI gate
-GitHub Actions runs on every push to PR branch:
+### 6. Commit + push checkpoint
+- After each meaningful code update, commit and push the branch immediately unless the operator explicitly asks to hold it.
+- The pushed branch is the backup / rollback checkpoint.
+- Prefer smaller, reviewable commits over one giant local-only change.
+- If a change is risky, push a known-good checkpoint before the next edit pass.
+
+### 7. CI gate
+GitHub Actions runs on every push:
 - `ruff check .`
 - `mypy app/core/`
 - `pytest -q`
 - Build the FastAPI app (import smoke test).
 
-A red CI blocks review. No exceptions.
+A red CI blocks landing and should trigger a fix pass, but it does not justify keeping code local-only.
 
-### 6. Review
-- One human reviewer + supervisor sign-off.
+### 8. Review
+- Review can happen on a PR or on a pushed branch when the operator wants speed over ceremony.
+- One human reviewer + supervisor sign-off is still preferred for substantial features.
 - Review checklist (in PR template): scope-guard touched? secrets handled? AI prompts versioned? tests added?
 - Security-labeled tickets need a second reviewer.
 
-### 7. Merge
-- Squash merge only. PR title becomes the squash-commit subject (keep it clean — it ends up in `git log`).
-- Issue auto-closes via "Closes #N" in PR body.
-- Update ROADMAP.md exit-criteria checkboxes if the PR moved the phase forward.
+### 9. Land
+- Do not block normal coding on repeated merge prompts.
+- If using a PR, squash merge is preferred.
+- If the operator is working in a faster direct-push cycle, the pushed branch itself is the reviewable artifact and can be accepted as the working baseline without pausing new coding.
+- Issue auto-closes via "Closes #N" in PR body when a PR is used.
+- Update ROADMAP.md exit-criteria checkboxes if the change moved the phase forward.
+
+## Rollback model
+- Incremental git history is the rollback mechanism.
+- Every pushed commit is a recovery point.
+- Prefer:
+  - commit current good state
+  - push
+  - continue
+- Before a new batch, make sure one of those pushed recovery points exists first.
+- Avoid batching unrelated work into one irreversible lump.
 
 ## Release pipeline
 - Tag on `main` triggers a GitHub Release with auto-generated changelog from squash messages.
 - v0.x.y until Phase 4 ships.
 
 ## Hot-fix path
-- For p0 bugs (auth bypass, scope leak, secrets exposure): branch from `main`, fast-track review with two reviewers, no design stage. Still requires CI green.
+- For p0 bugs (auth bypass, scope leak, secrets exposure): branch from `main`, push immediately, fast-track review with two reviewers, no design stage. Still requires CI green before landing.
