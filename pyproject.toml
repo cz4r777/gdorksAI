@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gdorksai"
-version = "0.0.1"
+version = "0.1.0a1"
 description = "AI-assisted Google dork reconnaissance for authorized pentesting."
 readme = "README.md"
 license = "MIT"
