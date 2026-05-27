@@ -49,6 +49,59 @@ class SavedSession:
     meta_path: Path
 
 
+@dataclass(frozen=True)
+class SessionSummary:
+    session_id: str
+    directory: Path
+    report_path: Path
+    meta_path: Path
+    ts: str
+    target: str
+    backend: str
+    prompt_filename: str
+
+
+def list_sessions(limit: int | None = None) -> list[SessionSummary]:
+    """Return saved session summaries, newest-first.
+
+    Sorted by directory mtime descending. A session whose meta.json is
+    missing or malformed is skipped silently — the events file remains
+    the source of truth.
+    """
+    root = sessions_dir()
+    if not root.is_dir():
+        return []
+    out: list[SessionSummary] = []
+    children = [p for p in root.iterdir() if p.is_dir()]
+    children.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    for d in children:
+        meta_path = d / "meta.json"
+        report_path = d / "report.md"
+        if not meta_path.is_file():
+            continue
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(meta, dict):
+            continue
+        out.append(
+            SessionSummary(
+                session_id=str(meta.get("session_id", d.name)),
+                directory=d,
+                report_path=report_path,
+                meta_path=meta_path,
+                ts=str(meta.get("ts", "")),
+                target=str(meta.get("target", "")),
+                backend=str(meta.get("backend", "")),
+                prompt_filename=str(meta.get("prompt_filename", "")),
+            )
+        )
+        if limit is not None and len(out) >= limit:
+            break
+    return out
+
+
 def sessions_dir() -> Path:
     return Path(os.environ.get(_ENV_KEY, _DEFAULT_DIR))
 
