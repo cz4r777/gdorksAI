@@ -1,9 +1,9 @@
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import httpx
 import pytest
-from unittest.mock import patch
 
 from app.core import scope as scope_module
 from app.core.readiness import _ready_for_ai, run_startup_readiness

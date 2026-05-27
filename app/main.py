@@ -1,3 +1,4 @@
+import contextlib
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -30,10 +31,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Run a startup readiness pass unless explicitly disabled (e.g. in tests
     # where probing Ollama on every TestClient init would be noisy).
     if os.environ.get("GDORKSAI_SKIP_STARTUP_READINESS") != "1":
-        try:
+        # Diagnostics must never break boot.
+        with contextlib.suppress(Exception):
             await run_startup_readiness()
-        except Exception:  # noqa: BLE001 — diagnostics must never break boot
-            pass
     yield
 
 
