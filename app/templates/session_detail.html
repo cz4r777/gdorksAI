@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<nav class="text-xs text-gray-500 mb-2">
+  <a href="/sessions" class="underline">sessions</a> &raquo;
+  <code>{{ session.session_id }}</code>
+</nav>
+
+<section class="mb-4 flex items-baseline justify-between gap-3">
+  <h2 class="text-lg font-medium">Session {{ session.session_id }}</h2>
+  <div class="flex gap-2">
+    <a href="/sessions/{{ session.session_id }}/report.md"
+       class="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-100"
+       data-testid="download-report">
+      Download .md
+    </a>
+    <button type="button"
+            class="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-100"
+            onclick="navigator.clipboard.writeText(document.getElementById('report-md').innerText)">
+      Copy
+    </button>
+  </div>
+</section>
+
+<section class="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs"
+         data-testid="session-meta">
+  <div class="border rounded bg-white p-2">
+    <div class="text-gray-500 text-[10px]">target</div>
+    <code class="break-all">{{ session.target }}</code>
+  </div>
+  <div class="border rounded bg-white p-2">
+    <div class="text-gray-500 text-[10px]">backend</div>
+    <code>{{ session.backend }}</code>
+  </div>
+  <div class="border rounded bg-white p-2">
+    <div class="text-gray-500 text-[10px]">prompt</div>
+    <code class="break-all">{{ session.prompt_filename }}</code>
+  </div>
+  <div class="border rounded bg-white p-2">
+    <div class="text-gray-500 text-[10px]">saved at</div>
+    <code class="text-[10px]">{{ session.ts }}</code>
+  </div>
+</section>
+
+<section class="mb-3 text-[10px] text-gray-500 font-mono break-all"
+         data-testid="session-paths">
+  report: {{ session.report_path }}<br>
+  meta:   {{ session.meta_path }}
+</section>
+
+<div class="border rounded bg-white p-3">
+  <pre id="report-md"
+       class="text-xs whitespace-pre-wrap font-mono leading-snug overflow-x-auto">{{ markdown }}</pre>
+</div>
+{% endblock %}

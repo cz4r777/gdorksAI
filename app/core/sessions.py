@@ -137,6 +137,10 @@ def save_report(
         "report_path": str(report_path),
     }
     meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    # Per the events.py metadata-only invariant, target is intentionally NOT
+    # included in the event payload; it stays in meta.json (the operator's
+    # own saved file under runtime/sessions/<id>/) but never reaches the
+    # diagnostic event log.
     record(
         KIND_SESSION_SAVED,
         "sessions",
@@ -144,7 +148,6 @@ def save_report(
         level=LEVEL_INFO,
         session_id=session_id,
         directory=str(root),
-        target=target,
         backend=backend,
         prompt_filename=prompt_filename,
         prompt_hash_prefix=prompt_hash[:12],

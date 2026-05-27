@@ -336,13 +336,15 @@ def render(
             status_code=400,
         )
     except OutOfScopeError as e:
+        # Per the events.py metadata-only invariant, target is intentionally
+        # NOT included; reason + dork_id + category are enough to diagnose
+        # without persisting the operator's investigated host.
         record(
             KIND_DORK_REFUSED,
             "dorks",
             "dork render refused: out of scope",
             level=LEVEL_WARN,
             reason="out_of_scope",
-            target=target_clean,
             dork_id=dork_id,
             category=category,
         )
@@ -359,7 +361,6 @@ def render(
             "dork render refused: unknown dork id",
             level=LEVEL_WARN,
             reason="unknown_dork_id",
-            target=target_clean,
             dork_id=dork_id,
         )
         return templates.TemplateResponse(
@@ -373,7 +374,6 @@ def render(
         "dorks",
         f"dork rendered: {category or 'uncategorized'}",
         level=LEVEL_INFO,
-        target=target_clean,
         dork_id=dork_id,
         category=category,
         source_file=source_file,

@@ -205,7 +205,6 @@ class AIAdapter:
                 f"ai refused: target out of scope ({req.role})",
                 level=LEVEL_WARN,
                 role=req.role,
-                target=req.target,
                 reason="out_of_scope_target",
             )
             raise
@@ -226,7 +225,6 @@ class AIAdapter:
                 f"ai refused: {e.reason.value} ({req.role})",
                 level=LEVEL_WARN,
                 role=req.role,
-                target=req.target,
                 reason=e.reason.value,
             )
             raise
@@ -239,7 +237,6 @@ class AIAdapter:
                 f"ai refused: {e.reason.value} ({req.role})",
                 level=LEVEL_WARN,
                 role=req.role,
-                target=req.target,
                 reason=e.reason.value,
                 prompt_filename=prompt.filename,
                 prompt_hash_prefix=prompt.sha256[:12],
@@ -254,7 +251,6 @@ class AIAdapter:
                 f"ai refused: model output referenced out-of-scope host ({req.role})",
                 level=LEVEL_WARN,
                 role=req.role,
-                target=req.target,
                 reason=e.reason.value,
                 backend=backend,
                 prompt_filename=prompt.filename,
@@ -262,9 +258,8 @@ class AIAdapter:
             )
             raise
         _log.info(
-            "ai call: role=%s target=%s backend=%s prompt=%s hash=%s",
+            "ai call: role=%s backend=%s prompt=%s hash=%s",
             req.role,
-            req.target,
             backend,
             prompt.filename,
             prompt.sha256[:12],
@@ -275,7 +270,6 @@ class AIAdapter:
             f"ai call ok: role={req.role} backend={backend}",
             level=LEVEL_INFO,
             role=req.role,
-            target=req.target,
             backend=backend,
             prompt_filename=prompt.filename,
             prompt_hash_prefix=prompt.sha256[:12],
