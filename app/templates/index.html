@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="mb-6">
+  <h2 class="text-lg font-medium mb-2">Categories</h2>
+  {% if categories %}
+    <ul class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+    {% for c in categories %}
+      <li>
+        <button type="button"
+                class="w-full text-left text-sm underline decoration-dotted"
+                hx-get="/search"
+                hx-vals='{"category": "{{ c|e }}"}'
+                hx-target="#results">
+          {{ c }}
+        </button>
+      </li>
+    {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-sm text-gray-500">
+      No corpus loaded. Set <code>DORKS_DATA_PATH</code> in your
+      <code>.env</code> to a directory containing per-category
+      <code>.txt</code> files (and optionally <code>dorks.json</code>),
+      then restart the app.
+    </p>
+  {% endif %}
+</section>
+
+<section class="mb-6">
+  <label class="block text-sm font-medium mb-1" for="q">Search dorks</label>
+  <input id="q" name="q" type="search" autocomplete="off"
+         class="w-full border rounded px-3 py-2"
+         placeholder="Type to search…"
+         hx-get="/search"
+         hx-trigger="keyup changed delay:200ms"
+         hx-target="#results">
+</section>
+
+<section id="results" aria-live="polite"></section>
+{% endblock %}

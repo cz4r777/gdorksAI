@@ -1,0 +1,10 @@
+<div class="border-l-4 border-red-500 bg-red-50 p-3 text-sm">
+  <div class="font-medium">Refused: {{ reason }}</div>
+  <div class="text-xs text-gray-700 mt-1">{{ detail }}</div>
+  {% if reason == "out of scope" %}
+  <p class="text-xs text-gray-500 mt-2">
+    To allow <code>{{ target }}</code>, add it to <code>runtime/scope.json</code>
+    (only if you are authorized for that engagement) and restart the app.
+  </p>
+  {% endif %}
+</div>

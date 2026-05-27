@@ -10,6 +10,7 @@ from app.core.dorks import (
     RegistryError,
     load_default_registry,
 )
+from app.core.scope import OutOfScopeError, ScopeGuard
 
 
 def _seed_corpus(root: Path) -> None:
@@ -48,6 +49,17 @@ def _seed_corpus(root: Path) -> None:
     )
 
 
+def _make_scope(root: Path, targets: list[str]) -> ScopeGuard:
+    scope_file = root / "scope.json"
+    scope_file.write_text(json.dumps({"targets": targets}), encoding="utf-8")
+    return ScopeGuard(scope_file)
+
+
+@pytest.fixture
+def permissive_scope(tmp_path: Path) -> ScopeGuard:
+    return _make_scope(tmp_path, ["example.com", "*.example.com"])
+
+
 def test_load_empty_when_path_missing(tmp_path: Path) -> None:
     reg = DorkRegistry.from_path(tmp_path / "does-not-exist")
     assert len(reg) == 0
@@ -84,32 +96,48 @@ def test_search_combined(tmp_path: Path) -> None:
     assert len(hits) == 1
 
 
-def test_render_substitutes_target(tmp_path: Path) -> None:
+def test_render_substitutes_target(
+    tmp_path: Path, permissive_scope: ScopeGuard
+) -> None:
     _seed_corpus(tmp_path)
     reg = DorkRegistry.from_path(tmp_path)
-    target = "example.com"
     record = next(
         r for r in reg.search(category="SQLi") if "inurl:id=" in r.query
     )
-    rendered = reg.render(record.id, target)
+    rendered = reg.render(record.id, "example.com", scope_guard=permissive_scope)
     assert rendered == "site:example.com inurl:id="
 
 
-def test_render_rejects_empty_target(tmp_path: Path) -> None:
+def test_render_rejects_empty_target(
+    tmp_path: Path, permissive_scope: ScopeGuard
+) -> None:
     _seed_corpus(tmp_path)
     reg = DorkRegistry.from_path(tmp_path)
     record = reg.search()[0]
     with pytest.raises(InvalidTargetError):
-        reg.render(record.id, "")
+        reg.render(record.id, "", scope_guard=permissive_scope)
     with pytest.raises(InvalidTargetError):
-        reg.render(record.id, "   ")
+        reg.render(record.id, "   ", scope_guard=permissive_scope)
 
 
-def test_render_unknown_dork_raises(tmp_path: Path) -> None:
+def test_render_refuses_out_of_scope(tmp_path: Path) -> None:
+    _seed_corpus(tmp_path)
+    reg = DorkRegistry.from_path(tmp_path)
+    scope = _make_scope(tmp_path, ["allowed.com"])
+    record = reg.search()[0]
+    with pytest.raises(OutOfScopeError):
+        reg.render(record.id, "victim.com", scope_guard=scope)
+
+
+def test_render_unknown_dork_raises(
+    tmp_path: Path, permissive_scope: ScopeGuard
+) -> None:
     _seed_corpus(tmp_path)
     reg = DorkRegistry.from_path(tmp_path)
     with pytest.raises(DorkNotFoundError):
-        reg.render("nope/nothing#1", "example.com")
+        reg.render(
+            "nope/nothing#1", "example.com", scope_guard=permissive_scope
+        )
 
 
 def test_malformed_json_catalog(tmp_path: Path) -> None:
