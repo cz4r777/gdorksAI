@@ -42,7 +42,14 @@ from typing import Any
 
 import httpx
 
-from app.core.scope import ScopeGuard
+from app.core.events import (
+    KIND_AI_CALL,
+    KIND_AI_REFUSED,
+    LEVEL_INFO,
+    LEVEL_WARN,
+    record,
+)
+from app.core.scope import OutOfScopeError, ScopeGuard
 
 _log = logging.getLogger("gdorksai.ai")
 
@@ -187,14 +194,73 @@ class AIAdapter:
             self._client = None
 
     async def generate(self, req: AIRequest) -> AIResponse:
-        self._scope.assert_in_scope(req.target, caller=f"ai.generate/{req.role}")
-        prompt = _load_prompt(
-            req.role,
-            self._prompts_dir,
-            {"target": req.target, "user_input": req.user_input, **req.extra},
-        )
-        text, backend = await self._call_with_fallback(req.role, prompt)
-        self._post_call_scope_scan(text, req)
+        try:
+            self._scope.assert_in_scope(
+                req.target, caller=f"ai.generate/{req.role}"
+            )
+        except OutOfScopeError:
+            record(
+                KIND_AI_REFUSED,
+                "ai",
+                f"ai refused: target out of scope ({req.role})",
+                level=LEVEL_WARN,
+                role=req.role,
+                target=req.target,
+                reason="out_of_scope_target",
+            )
+            raise
+        try:
+            prompt = _load_prompt(
+                req.role,
+                self._prompts_dir,
+                {
+                    "target": req.target,
+                    "user_input": req.user_input,
+                    **req.extra,
+                },
+            )
+        except AIAdapterError as e:
+            record(
+                KIND_AI_REFUSED,
+                "ai",
+                f"ai refused: {e.reason.value} ({req.role})",
+                level=LEVEL_WARN,
+                role=req.role,
+                target=req.target,
+                reason=e.reason.value,
+            )
+            raise
+        try:
+            text, backend = await self._call_with_fallback(req.role, prompt)
+        except AIAdapterError as e:
+            record(
+                KIND_AI_REFUSED,
+                "ai",
+                f"ai refused: {e.reason.value} ({req.role})",
+                level=LEVEL_WARN,
+                role=req.role,
+                target=req.target,
+                reason=e.reason.value,
+                prompt_filename=prompt.filename,
+                prompt_hash_prefix=prompt.sha256[:12],
+            )
+            raise
+        try:
+            self._post_call_scope_scan(text, req)
+        except AIAdapterError as e:
+            record(
+                KIND_AI_REFUSED,
+                "ai",
+                f"ai refused: model output referenced out-of-scope host ({req.role})",
+                level=LEVEL_WARN,
+                role=req.role,
+                target=req.target,
+                reason=e.reason.value,
+                backend=backend,
+                prompt_filename=prompt.filename,
+                prompt_hash_prefix=prompt.sha256[:12],
+            )
+            raise
         _log.info(
             "ai call: role=%s target=%s backend=%s prompt=%s hash=%s",
             req.role,
@@ -202,6 +268,17 @@ class AIAdapter:
             backend,
             prompt.filename,
             prompt.sha256[:12],
+        )
+        record(
+            KIND_AI_CALL,
+            "ai",
+            f"ai call ok: role={req.role} backend={backend}",
+            level=LEVEL_INFO,
+            role=req.role,
+            target=req.target,
+            backend=backend,
+            prompt_filename=prompt.filename,
+            prompt_hash_prefix=prompt.sha256[:12],
         )
         return AIResponse(
             text=text,

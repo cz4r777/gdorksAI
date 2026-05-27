@@ -58,6 +58,29 @@ def _req(user_input: str = "find exposed configs") -> AIRequest:
     )
 
 
+@pytest.fixture(autouse=True)
+def _isolate_events(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Point the events file at a per-test tmp path so emissions can be asserted."""
+    target = tmp_path / "events.jsonl"
+    monkeypatch.setenv("EVENTS_FILE", str(target))
+    return target
+
+
+def _read_events() -> list[dict]:
+    from app.core.events import read_recent
+
+    return [
+        {
+            "kind": e.kind,
+            "level": e.level,
+            "component": e.component,
+            "summary": e.summary,
+            "data": e.data,
+        }
+        for e in read_recent(50)
+    ]
+
+
 @pytest.mark.asyncio
 async def test_ollama_happy_path(tmp_path: Path) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
@@ -77,6 +100,13 @@ async def test_ollama_happy_path(tmp_path: Path) -> None:
     assert resp.role == "query_gen"
     assert resp.prompt_filename == "query_gen_v1.md"
     assert len(resp.prompt_hash) == 64
+    # ai_call event emitted on success
+    events = _read_events()
+    ai_calls = [e for e in events if e["kind"] == "ai_call"]
+    assert len(ai_calls) == 1
+    assert ai_calls[0]["data"]["role"] == "query_gen"
+    assert ai_calls[0]["data"]["backend"] == "ollama"
+    assert ai_calls[0]["data"]["target"] == "example.com"
     await adapter.aclose()
 
 
@@ -94,6 +124,13 @@ async def test_scope_rejects_before_backend_call(tmp_path: Path) -> None:
             AIRequest(role="query_gen", target="victim.com", user_input="x")
         )
     assert calls == []
+    # ai_refused event emitted on scope rejection
+    events = _read_events()
+    refused = [e for e in events if e["kind"] == "ai_refused"]
+    assert len(refused) == 1
+    assert refused[0]["data"]["reason"] == "out_of_scope_target"
+    assert refused[0]["data"]["target"] == "victim.com"
+    assert refused[0]["level"] == "warn"
     await adapter.aclose()
 
 
@@ -187,6 +224,12 @@ async def test_post_call_out_of_scope_output_refused(tmp_path: Path) -> None:
     with pytest.raises(AIAdapterError) as ei:
         await adapter.generate(_req())
     assert ei.value.reason == AIErrorReason.OUT_OF_SCOPE_OUTPUT
+    # ai_refused event emitted on post-call refusal
+    events = _read_events()
+    refused = [e for e in events if e["kind"] == "ai_refused"]
+    assert len(refused) == 1
+    assert refused[0]["data"]["reason"] == "out_of_scope_output"
+    assert refused[0]["data"]["backend"] == "ollama"
     await adapter.aclose()
 
 
