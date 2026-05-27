@@ -32,7 +32,9 @@ def client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     web.reset_registry()
     web.reset_adapter()
     scope_module.reset_default_guard()
-    return TestClient(app)
+    c = TestClient(app)
+    c.headers["HX-Request"] = "true"
+    return c
 
 
 def test_get_report_without_from_renders_empty_form(client: TestClient) -> None:

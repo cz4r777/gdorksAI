@@ -66,7 +66,9 @@ def client(
     web.reset_registry()
     web.reset_adapter()
     scope_module.reset_default_guard()
-    return TestClient(app)
+    c = TestClient(app)
+    c.headers["HX-Request"] = "true"
+    return c
 
 
 def _override(adapter: FakeAdapter) -> None:
