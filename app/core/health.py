@@ -25,6 +25,7 @@ from app.core.events import (
     KIND_GROQ_CHECK,
     KIND_HEALTH_CHECK,
     KIND_OLLAMA_CHECK,
+    KIND_OLLAMA_MODELS_CHECK,
     KIND_PROMPTS_CHECK,
     KIND_REGISTRY_LOADED,
     KIND_SCOPE_LOADED,
@@ -37,6 +38,23 @@ from app.core.events import (
 from app.core.scope import ScopeGuard
 
 _PROBE_TIMEOUT = 2.0
+
+
+_OLLAMA_MODEL_ROLE_ENVS = {
+    "query_gen": "OLLAMA_MODEL_QUERY",
+    "triage": "OLLAMA_MODEL_TRIAGE",
+    "pivot": "OLLAMA_MODEL_PIVOT",
+    "report": "OLLAMA_MODEL_REPORT",
+}
+
+
+def _configured_ollama_models() -> dict[str, str]:
+    out: dict[str, str] = {}
+    for role, env in _OLLAMA_MODEL_ROLE_ENVS.items():
+        v = os.environ.get(env, "").strip()
+        if v:
+            out[role] = v
+    return out
 
 
 async def probe_ollama() -> Event:
@@ -73,6 +91,92 @@ async def probe_ollama() -> Event:
             reachable=False,
             detail=type(e).__name__,
         )
+
+
+async def probe_ollama_models() -> Event:
+    """Compare configured per-role Ollama models against the installed set.
+
+    Emits one event with a per-role breakdown: which configured models are
+    installed, which are missing. The model-name list itself is metadata, not
+    secret. If Ollama is unreachable the event is WARN with
+    ``reachable=false``.
+    """
+    host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+    configured = _configured_ollama_models()
+    try:
+        async with httpx.AsyncClient(timeout=_PROBE_TIMEOUT) as c:
+            r = await c.get(f"{host}/api/tags")
+    except httpx.HTTPError as e:
+        return record(
+            KIND_OLLAMA_MODELS_CHECK,
+            "ollama",
+            f"ollama unreachable; cannot verify configured models at {host}",
+            level=LEVEL_WARN,
+            host=host,
+            reachable=False,
+            detail=type(e).__name__,
+            configured=configured,
+        )
+    if r.status_code != 200:
+        return record(
+            KIND_OLLAMA_MODELS_CHECK,
+            "ollama",
+            f"ollama /api/tags returned HTTP {r.status_code}",
+            level=LEVEL_WARN,
+            host=host,
+            reachable=False,
+            detail=f"HTTP {r.status_code}",
+            configured=configured,
+        )
+    try:
+        data = r.json()
+    except ValueError as e:
+        return record(
+            KIND_OLLAMA_MODELS_CHECK,
+            "ollama",
+            "ollama /api/tags returned non-JSON",
+            level=LEVEL_WARN,
+            host=host,
+            reachable=True,
+            detail=type(e).__name__,
+            configured=configured,
+        )
+    raw = data.get("models", []) if isinstance(data, dict) else []
+    installed: list[str] = []
+    if isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, dict):
+                name = item.get("name") or item.get("model")
+                if isinstance(name, str) and name:
+                    installed.append(name)
+    installed_set = set(installed)
+    by_role: dict[str, dict[str, object]] = {}
+    missing: list[str] = []
+    for role, model in configured.items():
+        ok = model in installed_set
+        by_role[role] = {"model": model, "installed": ok}
+        if not ok:
+            missing.append(f"{role}:{model}")
+    summary = (
+        f"all {len(configured)} configured ollama models installed"
+        if configured and not missing
+        else f"{len(missing)} configured ollama model(s) missing: {', '.join(missing)}"
+        if missing
+        else "no per-role ollama models configured"
+    )
+    level = LEVEL_WARN if missing else LEVEL_INFO
+    return record(
+        KIND_OLLAMA_MODELS_CHECK,
+        "ollama",
+        summary,
+        level=level,
+        host=host,
+        reachable=True,
+        configured=configured,
+        installed=sorted(installed),
+        missing=missing,
+        by_role=by_role,
+    )
 
 
 def probe_groq() -> Event:
@@ -200,6 +304,7 @@ async def run_health_checks() -> list[Event]:
     """
     events: list[Event] = []
     events.append(await probe_ollama())
+    events.append(await probe_ollama_models())
     events.append(probe_groq())
     events.append(probe_registry())
     events.append(probe_scope())
