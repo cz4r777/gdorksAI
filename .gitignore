@@ -44,3 +44,5 @@ node_modules/
 # Legacy / reference material pulled in from outside the repo (never commit)
 _legacy/
 _reference/
+GDorks/
+gdorks/
