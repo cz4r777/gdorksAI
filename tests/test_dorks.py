@@ -146,9 +146,12 @@ def test_malformed_json_catalog(tmp_path: Path) -> None:
         DorkRegistry.from_path(tmp_path)
 
 
-def test_catalog_must_be_list(tmp_path: Path) -> None:
+def test_catalog_rejects_unsupported_top_level_type(tmp_path: Path) -> None:
+    # 370d8f0 extended _load_from_json to accept the legacy list form AND a
+    # flat {category: query} dict from the upstream GDorks corpus. A bare
+    # string is neither and must still raise.
     (tmp_path / "dorks.json").write_text(
-        json.dumps({"category": "x", "queries": []}), encoding="utf-8"
+        json.dumps("just a string"), encoding="utf-8"
     )
     with pytest.raises(RegistryError):
         DorkRegistry.from_path(tmp_path)

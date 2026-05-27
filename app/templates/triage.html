@@ -31,11 +31,13 @@ Indexed archive file exposed in web root.</pre>
   </p>
 </section>
 
-<form hx-post="/triage" hx-target="#triage-results"
+<form action="/triage" method="post"
+      hx-post="/triage" hx-target="#triage-results"
       class="border rounded bg-white p-3 mb-4">
   <label class="block text-sm font-medium mb-1" for="target">Target</label>
   <input id="target" name="target" type="text" required
          placeholder="example.com — must be in scope"
+         value="{{ prefill_target|default('') }}"
          class="w-full border rounded px-2 py-1 text-sm mb-3"
          autocomplete="off">
   <label class="block text-sm font-medium mb-1" for="snippets">
@@ -43,11 +45,13 @@ Indexed archive file exposed in web root.</pre>
   </label>
   <textarea id="snippets" name="snippets" rows="10" required
             placeholder="Paste Google result rows here, one per block. URLs + titles + descriptions are all useful."
-            class="w-full border rounded px-2 py-1 text-sm mb-3 font-mono"></textarea>
+            class="w-full border rounded px-2 py-1 text-sm mb-3 font-mono">{{ prefill_snippets|default('') }}</textarea>
   <button class="bg-gray-900 text-white px-3 py-1 rounded text-sm">
     Triage
   </button>
 </form>
 
-<section id="triage-results" aria-live="polite"></section>
+<section id="triage-results" aria-live="polite">
+  {% if embedded_result_html %}{{ embedded_result_html | safe }}{% endif %}
+</section>
 {% endblock %}

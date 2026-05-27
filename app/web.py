@@ -126,6 +126,39 @@ def _http_for_ai_reason(reason: AIErrorReason) -> int:
     return _AI_REASON_TO_HTTP.get(reason, 502)
 
 
+def _is_htmx(request: Request) -> bool:
+    return request.headers.get("HX-Request") == "true"
+
+
+def _html_or_full(
+    request: Request,
+    partial: str,
+    full_template: str,
+    ctx: dict[str, Any],
+    *,
+    status_code: int = 200,
+    prefill: dict[str, Any] | None = None,
+) -> HTMLResponse:
+    """Return the partial for HTMX clients; wrap it inside ``full_template``
+    for plain browser POSTs so the form keeps working when HTMX did not load.
+
+    ``prefill`` provides values to re-fill the form on the fallback page so
+    the operator doesn't lose input on a non-HTMX submit.
+    """
+    if _is_htmx(request):
+        return templates.TemplateResponse(
+            request, partial, ctx, status_code=status_code
+        )
+    partial_html = templates.get_template(partial).render({**ctx, "request": request})
+    full_ctx = {
+        "embedded_result_html": partial_html,
+        **(prefill or {}),
+    }
+    return templates.TemplateResponse(
+        request, full_template, full_ctx, status_code=status_code
+    )
+
+
 def _parse_query_suggestions(text: str, target: str) -> list[dict[str, Any]]:
     """Parse query_gen output into suggestion objects.
 
@@ -420,16 +453,19 @@ async def query_submit(
 ) -> HTMLResponse:
     target_clean = target.strip()
     intent_clean = intent.strip()
+    prefill = {"prefill_target": target_clean, "prefill_intent": intent_clean}
     if not target_clean or not intent_clean:
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "query.html",
             {
                 "reason": "missing input",
                 "detail": "Both target and intent are required.",
                 "target": target_clean,
             },
             status_code=400,
+            prefill=prefill,
         )
     try:
         resp = await adapter.generate(
@@ -440,36 +476,42 @@ async def query_submit(
             )
         )
     except OutOfScopeError as e:
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "query.html",
             {
                 "reason": "out of scope",
                 "detail": str(e),
                 "target": target_clean,
             },
             status_code=403,
+            prefill=prefill,
         )
     except AIAdapterError as e:
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "query.html",
             {
                 "reason": e.reason.value,
                 "detail": str(e),
                 "target": target_clean,
             },
             status_code=_http_for_ai_reason(e.reason),
+            prefill=prefill,
         )
     suggestions = _parse_query_suggestions(resp.text, target_clean)
-    return templates.TemplateResponse(
+    return _html_or_full(
         request,
         "_query_results.html",
+        "query.html",
         {
             "suggestions": suggestions,
             "target": target_clean,
             "backend": resp.backend,
         },
+        prefill=prefill,
     )
 
 
@@ -544,16 +586,22 @@ async def triage_submit(
 ) -> HTMLResponse:
     target_clean = target.strip()
     snippets_clean = snippets.strip()
+    prefill = {
+        "prefill_target": target_clean,
+        "prefill_snippets": snippets_clean,
+    }
     if not target_clean or not snippets_clean:
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "triage.html",
             {
                 "reason": "missing input",
                 "detail": "Both target and pasted snippets are required.",
                 "target": target_clean,
             },
             status_code=400,
+            prefill=prefill,
         )
     try:
         resp = await adapter.generate(
@@ -564,32 +612,37 @@ async def triage_submit(
             )
         )
     except OutOfScopeError as e:
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "triage.html",
             {
                 "reason": "out of scope",
                 "detail": str(e),
                 "target": target_clean,
             },
             status_code=403,
+            prefill=prefill,
         )
     except AIAdapterError as e:
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "triage.html",
             {
                 "reason": e.reason.value,
                 "detail": str(e),
                 "target": target_clean,
             },
             status_code=_http_for_ai_reason(e.reason),
+            prefill=prefill,
         )
     findings, duplicates, refused = _parse_triage_findings(resp.text)
     if refused:
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "triage.html",
             {
                 "reason": "out of scope",
                 "detail": (
@@ -599,10 +652,12 @@ async def triage_submit(
                 "target": target_clean,
             },
             status_code=422,
+            prefill=prefill,
         )
-    return templates.TemplateResponse(
+    return _html_or_full(
         request,
         "_triage_results.html",
+        "triage.html",
         {
             "findings": findings,
             "duplicates": duplicates,
@@ -610,6 +665,7 @@ async def triage_submit(
             "backend": resp.backend,
             "parsed": len(findings) > 0,
         },
+        prefill=prefill,
     )
 
 
@@ -627,16 +683,22 @@ async def pivot_submit(
 ) -> HTMLResponse:
     target_clean = target.strip()
     finding_clean = finding.strip()
+    prefill = {
+        "prefill_target": target_clean,
+        "prefill_finding": finding_clean,
+    }
     if not target_clean or not finding_clean:
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "pivot.html",
             {
                 "reason": "missing input",
                 "detail": "Both target and finding are required.",
                 "target": target_clean,
             },
             status_code=400,
+            prefill=prefill,
         )
     try:
         resp = await adapter.generate(
@@ -647,31 +709,36 @@ async def pivot_submit(
             )
         )
     except OutOfScopeError as e:
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "pivot.html",
             {
                 "reason": "out of scope",
                 "detail": str(e),
                 "target": target_clean,
             },
             status_code=403,
+            prefill=prefill,
         )
     except AIAdapterError as e:
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "pivot.html",
             {
                 "reason": e.reason.value,
                 "detail": str(e),
                 "target": target_clean,
             },
             status_code=_http_for_ai_reason(e.reason),
+            prefill=prefill,
         )
     if resp.text.strip() == "OUT_OF_SCOPE":
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "pivot.html",
             {
                 "reason": "out of scope",
                 "detail": (
@@ -681,16 +748,19 @@ async def pivot_submit(
                 "target": target_clean,
             },
             status_code=422,
+            prefill=prefill,
         )
     suggestions = _parse_query_suggestions(resp.text, target_clean)
-    return templates.TemplateResponse(
+    return _html_or_full(
         request,
         "_query_results.html",
+        "pivot.html",
         {
             "suggestions": suggestions,
             "target": target_clean,
             "backend": resp.backend,
         },
+        prefill=prefill,
     )
 
 
@@ -798,16 +868,22 @@ async def report_submit(
 ) -> HTMLResponse:
     target_clean = target.strip()
     session_clean = session_log.strip()
+    prefill = {
+        "prefill_target": target_clean,
+        "prefill_session_log": session_clean,
+    }
     if not target_clean or not session_clean:
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "report.html",
             {
                 "reason": "missing input",
                 "detail": "Both target and session log are required.",
                 "target": target_clean,
             },
             status_code=400,
+            prefill=prefill,
         )
     try:
         resp = await adapter.generate(
@@ -818,31 +894,36 @@ async def report_submit(
             )
         )
     except OutOfScopeError as e:
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "report.html",
             {
                 "reason": "out of scope",
                 "detail": str(e),
                 "target": target_clean,
             },
             status_code=403,
+            prefill=prefill,
         )
     except AIAdapterError as e:
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "report.html",
             {
                 "reason": e.reason.value,
                 "detail": str(e),
                 "target": target_clean,
             },
             status_code=_http_for_ai_reason(e.reason),
+            prefill=prefill,
         )
     if resp.text.strip() == "OUT_OF_SCOPE":
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_query_error.html",
+            "report.html",
             {
                 "reason": "out of scope",
                 "detail": (
@@ -852,6 +933,7 @@ async def report_submit(
                 "target": target_clean,
             },
             status_code=422,
+            prefill=prefill,
         )
     saved = save_report(
         target=target_clean,
@@ -860,9 +942,10 @@ async def report_submit(
         prompt_filename=resp.prompt_filename,
         prompt_hash=resp.prompt_hash,
     )
-    return templates.TemplateResponse(
+    return _html_or_full(
         request,
         "_report_result.html",
+        "report.html",
         {
             "markdown": resp.text,
             "target": target_clean,
@@ -871,4 +954,5 @@ async def report_submit(
             "session_path": str(saved.directory),
             "report_path": str(saved.report_path),
         },
+        prefill=prefill,
     )

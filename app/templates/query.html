@@ -39,21 +39,25 @@
   </p>
 </section>
 
-<form hx-post="/query" hx-target="#query-results"
+<form action="/query" method="post"
+      hx-post="/query" hx-target="#query-results"
       class="border rounded bg-white p-3 mb-4">
   <label class="block text-sm font-medium mb-1" for="target">Target</label>
   <input id="target" name="target" type="text" required
          placeholder="example.com — must be in scope"
+         value="{{ prefill_target|default('') }}"
          class="w-full border rounded px-2 py-1 text-sm mb-3"
          autocomplete="off">
   <label class="block text-sm font-medium mb-1" for="intent">Intent</label>
   <textarea id="intent" name="intent" rows="3" required
             placeholder="What do you want to find? e.g. 'leaked configuration files'"
-            class="w-full border rounded px-2 py-1 text-sm mb-3"></textarea>
+            class="w-full border rounded px-2 py-1 text-sm mb-3">{{ prefill_intent|default('') }}</textarea>
   <button class="bg-gray-900 text-white px-3 py-1 rounded text-sm">
     Draft dork
   </button>
 </form>
 
-<section id="query-results" aria-live="polite"></section>
+<section id="query-results" aria-live="polite">
+  {% if embedded_result_html %}{{ embedded_result_html | safe }}{% endif %}
+</section>
 {% endblock %}

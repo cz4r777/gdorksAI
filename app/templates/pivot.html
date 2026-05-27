@@ -9,11 +9,13 @@
   </p>
 </section>
 
-<form hx-post="/pivot" hx-target="#pivot-results"
+<form action="/pivot" method="post"
+      hx-post="/pivot" hx-target="#pivot-results"
       class="border rounded bg-white p-3 mb-4">
   <label class="block text-sm font-medium mb-1" for="target">Target</label>
   <input id="target" name="target" type="text" required
          placeholder="example.com — must be in scope"
+         value="{{ prefill_target|default('') }}"
          class="w-full border rounded px-2 py-1 text-sm mb-3"
          autocomplete="off">
   <label class="block text-sm font-medium mb-1" for="finding">
@@ -21,11 +23,13 @@
   </label>
   <textarea id="finding" name="finding" rows="4" required
             placeholder="e.g. https://example.com/admin — exposed admin panel; suspect old framework version"
-            class="w-full border rounded px-2 py-1 text-sm mb-3 font-mono"></textarea>
+            class="w-full border rounded px-2 py-1 text-sm mb-3 font-mono">{{ prefill_finding|default('') }}</textarea>
   <button class="bg-gray-900 text-white px-3 py-1 rounded text-sm">
     Suggest pivots
   </button>
 </form>
 
-<section id="pivot-results" aria-live="polite"></section>
+<section id="pivot-results" aria-live="polite">
+  {% if embedded_result_html %}{{ embedded_result_html | safe }}{% endif %}
+</section>
 {% endblock %}
