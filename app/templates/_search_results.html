@@ -1,7 +1,21 @@
 {% if hits %}
 <p class="text-xs text-gray-500 mb-2">
-  {% if total > cap %}Showing first {{ cap }} of {{ total }} matches.
-  {% else %}{{ total }} match{% if total != 1 %}es{% endif %}.{% endif %}
+  {% if q or category %}
+    {% if category and q %}
+      Search results for <code>{{ q }}</code> in <code>{{ category }}</code>.
+    {% elif category %}
+      Showing dorks in <code>{{ category }}</code>.
+    {% else %}
+      Search results for <code>{{ q }}</code>.
+    {% endif %}
+  {% else %}
+    Showing the current corpus.
+  {% endif %}
+  {% if total > cap %}
+    Showing first {{ cap }} of {{ total }} matches.
+  {% else %}
+    {{ total }} match{% if total != 1 %}es{% endif %}.
+  {% endif %}
 </p>
 <ul class="divide-y border rounded bg-white">
 {% for h in hits %}

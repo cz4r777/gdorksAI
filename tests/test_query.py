@@ -87,6 +87,9 @@ def test_get_query_page_renders(client: TestClient) -> None:
     assert 'name="target"' in body
     assert 'name="intent"' in body
     assert 'hx-post="/query"' in body
+    assert "How to use this page" in body
+    assert "Good example prompts" in body
+    assert "/status" in body
 
 
 def test_post_query_structured_json(client: TestClient) -> None:

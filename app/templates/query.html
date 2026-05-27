@@ -9,6 +9,36 @@
   </p>
 </section>
 
+<section class="mb-4 border rounded bg-white p-3">
+  <h3 class="text-sm font-medium mb-2">How to use this page</h3>
+  <ol class="text-xs text-gray-600 space-y-1 list-decimal pl-4">
+    <li>Enter the exact target host or domain you are authorized to test.</li>
+    <li>Describe the thing you want to find, not the dork syntax.</li>
+    <li>Review the AI-drafted dorks and click the Google URL you want to run.</li>
+  </ol>
+  <div class="mt-3">
+    <div class="text-xs font-medium mb-1">Good example prompts</div>
+    <div class="flex flex-wrap gap-2 text-xs">
+      <button type="button" class="border rounded px-2 py-1 bg-white hover:bg-gray-50"
+              onclick="document.getElementById('intent').value='Find exposed admin panels and login portals';">
+        admin panels
+      </button>
+      <button type="button" class="border rounded px-2 py-1 bg-white hover:bg-gray-50"
+              onclick="document.getElementById('intent').value='Find leaked environment files, config files, and backups';">
+        config leaks
+      </button>
+      <button type="button" class="border rounded px-2 py-1 bg-white hover:bg-gray-50"
+              onclick="document.getElementById('intent').value='Find PDFs, spreadsheets, and internal documents indexed by Google';">
+        internal documents
+      </button>
+    </div>
+  </div>
+  <p class="text-xs text-gray-500 mt-3">
+    If AI is unavailable, check <a href="/status" class="underline">/status</a>
+    or <a href="/diagnostics" class="underline">/diagnostics</a>.
+  </p>
+</section>
+
 <form hx-post="/query" hx-target="#query-results"
       class="border rounded bg-white p-3 mb-4">
   <label class="block text-sm font-medium mb-1" for="target">Target</label>

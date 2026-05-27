@@ -86,6 +86,9 @@ def test_get_report_page_renders(client: TestClient) -> None:
     assert "Report" in body
     assert 'name="target"' in body
     assert 'name="session_log"' in body
+    assert "What makes a good report input" in body
+    assert "Example session log" in body
+    assert "/sessions" in body
 
 
 def test_post_report_returns_markdown_partial(client: TestClient) -> None:

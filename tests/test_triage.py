@@ -84,6 +84,8 @@ def test_get_triage_page_renders(client: TestClient) -> None:
     assert "Triage" in body
     assert 'name="target"' in body
     assert 'name="snippets"' in body
+    assert "What to paste here" in body
+    assert "Example snippet block" in body
 
 
 def test_post_triage_parses_findings_and_sorts_by_priority(

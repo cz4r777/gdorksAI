@@ -178,6 +178,7 @@ def _parse_query_suggestions(text: str, target: str) -> list[dict[str, Any]]:
 def index(request: Request, registry: RegistryDep) -> HTMLResponse:
     categories = registry.list_categories()
     counts = {c: len(registry.search(category=c)) for c in categories}
+    search_hits = registry.search()
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -185,6 +186,9 @@ def index(request: Request, registry: RegistryDep) -> HTMLResponse:
             "categories": categories,
             "counts": counts,
             "total": len(registry),
+            "search_hits": search_hits[:_RESULT_CAP],
+            "search_total": len(search_hits),
+            "result_cap": _RESULT_CAP,
         },
     )
 
@@ -300,7 +304,13 @@ def search(
     return templates.TemplateResponse(
         request,
         "_search_results.html",
-        {"hits": hits[:_RESULT_CAP], "total": len(hits), "cap": _RESULT_CAP},
+        {
+            "hits": hits[:_RESULT_CAP],
+            "total": len(hits),
+            "cap": _RESULT_CAP,
+            "q": q,
+            "category": category,
+        },
     )
 
 

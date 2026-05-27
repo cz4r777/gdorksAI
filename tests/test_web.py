@@ -64,6 +64,19 @@ def test_home_search_box_has_category_dropdown(client: TestClient) -> None:
     assert 'hx-get="/search"' in body
     # Search input includes the category from the dropdown
     assert 'hx-include="#q-category"' in body
+    # Home page now preloads the current corpus instead of showing a blank pane
+    assert "Showing the current corpus." in body
+    assert "inurl:id=" in body
+
+
+def test_home_has_ai_draft_section(client: TestClient) -> None:
+    r = client.get("/")
+    body = r.text
+    assert "AI-assisted search draft" in body
+    assert 'hx-post="/query"' in body
+    assert 'id="home-ai-target"' in body
+    assert 'id="home-ai-intent"' in body
+    assert "Draft with AI" in body
 
 
 def test_search_returns_partial(client: TestClient) -> None:

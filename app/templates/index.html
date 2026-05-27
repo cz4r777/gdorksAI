@@ -1,5 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
+<section class="mb-6 border rounded bg-white p-4">
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+      <h2 class="text-lg font-medium">Home — browse, search, and AI-draft dorks</h2>
+      <p class="text-xs text-gray-600 mt-1">
+        Use the corpus search below for direct browsing, or use the AI draft box
+        to turn a plain-English idea into clickable Google dorks. The app does
+        not fetch Google for you; you still open the final URL yourself.
+      </p>
+    </div>
+    <a href="/status" class="text-xs underline">check AI / scope status</a>
+  </div>
+</section>
+
 <section class="mb-6">
   <div class="flex items-baseline justify-between mb-2">
     <h2 class="text-lg font-medium">Categories</h2>
@@ -36,7 +50,10 @@
 </section>
 
 <section class="mb-6">
-  <label class="block text-sm font-medium mb-1" for="q">Search dorks</label>
+  <div class="flex items-baseline justify-between mb-1">
+    <label class="block text-sm font-medium" for="q">Search dorks</label>
+    <a href="/dorks" class="text-xs underline">browse the full list</a>
+  </div>
   <div class="flex flex-col sm:flex-row gap-2">
     <select id="q-category" name="category"
             class="border rounded px-2 py-2 text-sm bg-white sm:w-56"
@@ -62,7 +79,75 @@
     Pick a category to scope the search, or leave it on
     <em>All categories</em> to search the full corpus.
   </p>
+  <div class="mt-2 flex flex-wrap gap-2 text-xs">
+    <button type="button" class="border rounded px-2 py-1 bg-white hover:bg-gray-50"
+            onclick="document.getElementById('q').value='login'; htmx.trigger(document.getElementById('q'), 'keyup')">
+      Example: login pages
+    </button>
+    <button type="button" class="border rounded px-2 py-1 bg-white hover:bg-gray-50"
+            onclick="document.getElementById('q').value='config'; htmx.trigger(document.getElementById('q'), 'keyup')">
+      Example: config leaks
+    </button>
+    <button type="button" class="border rounded px-2 py-1 bg-white hover:bg-gray-50"
+            onclick="document.getElementById('q').value='pdf'; htmx.trigger(document.getElementById('q'), 'keyup')">
+      Example: documents
+    </button>
+  </div>
 </section>
 
-<section id="results" aria-live="polite"></section>
+<section id="results" aria-live="polite">
+  {% set hits = search_hits %}
+  {% set total = search_total %}
+  {% set cap = result_cap %}
+  {% set q = "" %}
+  {% set category = "" %}
+  {% include "_search_results.html" %}
+</section>
+
+<section class="mt-8 border rounded bg-white p-4">
+  <div class="mb-3">
+    <h2 class="text-lg font-medium mb-1">AI-assisted search draft</h2>
+    <p class="text-xs text-gray-600">
+      This is the fastest way to get AI help on one page. Give the target and
+      what you want to find; the app drafts Google dorks and you click the
+      generated URLs in your own browser.
+    </p>
+  </div>
+  <form hx-post="/query" hx-target="#home-query-results"
+        class="grid gap-3 sm:grid-cols-2">
+    <div class="sm:col-span-1">
+      <label class="block text-sm font-medium mb-1" for="home-ai-target">Target</label>
+      <input id="home-ai-target" name="target" type="text" required
+             placeholder="example.com — must be in scope"
+             class="w-full border rounded px-2 py-2 text-sm"
+             autocomplete="off">
+    </div>
+    <div class="sm:col-span-2">
+      <label class="block text-sm font-medium mb-1" for="home-ai-intent">What are you looking for?</label>
+      <textarea id="home-ai-intent" name="intent" rows="3" required
+                placeholder="Examples: exposed admin panels, leaked environment files, public PDFs, backup archives, login portals."
+                class="w-full border rounded px-2 py-2 text-sm"></textarea>
+    </div>
+    <div class="sm:col-span-2 flex flex-wrap gap-2 text-xs">
+      <button type="button" class="border rounded px-2 py-1 bg-white hover:bg-gray-50"
+              onclick="document.getElementById('home-ai-intent').value='Find exposed admin panels and login portals';">
+        Example: admin panels
+      </button>
+      <button type="button" class="border rounded px-2 py-1 bg-white hover:bg-gray-50"
+              onclick="document.getElementById('home-ai-intent').value='Find leaked configuration files, .env files, and backup archives';">
+        Example: config leaks
+      </button>
+      <button type="button" class="border rounded px-2 py-1 bg-white hover:bg-gray-50"
+              onclick="document.getElementById('home-ai-intent').value='Find PDFs, spreadsheets, and internal documents indexed by Google';">
+        Example: documents
+      </button>
+    </div>
+    <div class="sm:col-span-2">
+      <button class="bg-gray-900 text-white px-3 py-2 rounded text-sm">
+        Draft with AI
+      </button>
+    </div>
+  </form>
+  <section id="home-query-results" aria-live="polite" class="mt-4"></section>
+</section>
 {% endblock %}

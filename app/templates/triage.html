@@ -9,6 +9,28 @@
   </p>
 </section>
 
+<section class="mb-4 border rounded bg-white p-3">
+  <h3 class="text-sm font-medium mb-2">What to paste here</h3>
+  <ol class="text-xs text-gray-600 space-y-1 list-decimal pl-4">
+    <li>Paste the Google result title, URL, and short description together.</li>
+    <li>Separate different results with blank lines if you can.</li>
+    <li>Paste only results for the same authorized target.</li>
+  </ol>
+  <div class="mt-3">
+    <div class="text-xs font-medium mb-1">Example snippet block</div>
+    <pre class="text-[11px] whitespace-pre-wrap border rounded bg-gray-50 p-2 text-gray-700">Example Admin Panel
+https://example.com/admin
+Login portal exposed to the public internet; version banner visible.
+
+Example Backup File
+https://example.com/backup.zip
+Indexed archive file exposed in web root.</pre>
+  </div>
+  <p class="text-xs text-gray-500 mt-3">
+    Cleaner pasted blocks usually give cleaner ranking and dedupe output.
+  </p>
+</section>
+
 <form hx-post="/triage" hx-target="#triage-results"
       class="border rounded bg-white p-3 mb-4">
   <label class="block text-sm font-medium mb-1" for="target">Target</label>
