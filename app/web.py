@@ -177,6 +177,52 @@ def index(request: Request, registry: RegistryDep) -> HTMLResponse:
     )
 
 
+@router.get("/diagnostics", response_class=HTMLResponse)
+def diagnostics(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "diagnostics.html",
+        {"events": read_recent(200), "events_file": str(events_file())},
+    )
+
+
+@router.post("/diagnostics/refresh", response_class=HTMLResponse)
+async def diagnostics_refresh(request: Request) -> HTMLResponse:
+    await run_health_checks()
+    return templates.TemplateResponse(
+        request,
+        "_events_table.html",
+        {"events": read_recent(200)},
+    )
+
+
+@router.get("/diagnostics.jsonl")
+def diagnostics_jsonl() -> Response:
+    path = events_file()
+    if not path.is_file():
+        return Response(content="", media_type="application/x-ndjson")
+    return FileResponse(path, media_type="application/x-ndjson")
+
+
+@router.get("/status", response_class=HTMLResponse)
+def status_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "status.html",
+        {"snapshot": compute_snapshot(request.app)},
+    )
+
+
+@router.post("/status/refresh", response_class=HTMLResponse)
+async def status_refresh(request: Request) -> HTMLResponse:
+    await run_health_checks()
+    return templates.TemplateResponse(
+        request,
+        "_status_cards.html",
+        {"snapshot": compute_snapshot(request.app)},
+    )
+
+
 @router.get("/category/{name}", response_class=HTMLResponse)
 def category_page(
     request: Request, name: str, registry: RegistryDep

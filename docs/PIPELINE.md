@@ -5,22 +5,22 @@ The pipeline defines how a change moves from idea to committed, pushed, reviewab
 ## Stages
 
 ```
-┌──────────┐   ┌─────────┐   ┌────────┐   ┌──────────┐   ┌────────┐   ┌────────────┐
-│  Ticket  │──▶│ Design  │──▶│ Branch │──▶│ Implement│──▶│ Commit │──▶│ Push backup │
-└──────────┘   └─────────┘   └────────┘   └──────────┘   └────────┘   └─────┬──────┘
-                                                                             │
-                                                                             ▼
-                                                                       ┌─────────┐
-                                                                       │CI / use │
-                                                                       └────┬────┘
-                                                                            ▼
-                                                                       ┌────────┐
-                                                                       │ Review │
-                                                                       └────┬───┘
-                                                                            ▼
-                                                                       ┌──────┐
-                                                                       │ Land  │
-                                                                       └──────┘
+┌──────────┐   ┌─────────┐   ┌────────┐   ┌─────────────────┐   ┌──────────┐   ┌────────┐   ┌───────────┐
+│  Ticket  │──▶│ Design  │──▶│ Branch │──▶│ Backup checkpoint│──▶│ Implement│──▶│ Commit │──▶│ Push update │
+└──────────┘   └─────────┘   └────────┘   └─────────────────┘   └──────────┘   └────────┘   └─────┬─────┘
+                                                                                                      │
+                                                                                                      ▼
+                                                                                                ┌─────────┐
+                                                                                                │CI / use │
+                                                                                                └────┬────┘
+                                                                                                     ▼
+                                                                                                ┌────────┐
+                                                                                                │ Review │
+                                                                                                └────┬───┘
+                                                                                                     ▼
+                                                                                                ┌──────┐
+                                                                                                │ Land  │
+                                                                                                └──────┘
 ```
 
 ### 1. Ticket
@@ -41,18 +41,26 @@ The pipeline defines how a change moves from idea to committed, pushed, reviewab
 - Branch from `main` when practical, but do not block progress on local base purity. Rebase later if needed.
 - Long-lived hidden local branches are discouraged. If the work exists, it should usually be pushed.
 
-### 4. Implement
+### 4. Backup checkpoint
+- Before each batch of related modifications, create a known-good rollback point first.
+- Minimum pattern:
+  - commit current stable work
+  - push it
+  - then start the next edit batch
+- If nothing changed since the last clean checkpoint, explicitly treat the latest pushed commit as the backup for the next batch.
+
+### 5. Implement
 - One ticket = one branch. A PR is optional until review or landing is needed.
 - Commit messages: imperative, ≤72 char subject, body explains *why*.
 - Tests required for code touching `app/core/`. Optional for `app/templates/` and dork-data PRs.
 
-### 5. Commit + push checkpoint
+### 6. Commit + push checkpoint
 - After each meaningful code update, commit and push the branch immediately unless the operator explicitly asks to hold it.
 - The pushed branch is the backup / rollback checkpoint.
 - Prefer smaller, reviewable commits over one giant local-only change.
 - If a change is risky, push a known-good checkpoint before the next edit pass.
 
-### 6. CI gate
+### 7. CI gate
 GitHub Actions runs on every push:
 - `ruff check .`
 - `mypy app/core/`
@@ -61,15 +69,16 @@ GitHub Actions runs on every push:
 
 A red CI blocks landing and should trigger a fix pass, but it does not justify keeping code local-only.
 
-### 7. Review
+### 8. Review
 - Review can happen on a PR or on a pushed branch when the operator wants speed over ceremony.
 - One human reviewer + supervisor sign-off is still preferred for substantial features.
 - Review checklist (in PR template): scope-guard touched? secrets handled? AI prompts versioned? tests added?
 - Security-labeled tickets need a second reviewer.
 
-### 8. Land / merge
+### 9. Land
+- Do not block normal coding on repeated merge prompts.
 - If using a PR, squash merge is preferred.
-- If the operator is working in a faster direct-push cycle, the pushed branch itself is the reviewable artifact and can be rebased or merged later.
+- If the operator is working in a faster direct-push cycle, the pushed branch itself is the reviewable artifact and can be accepted as the working baseline without pausing new coding.
 - Issue auto-closes via "Closes #N" in PR body when a PR is used.
 - Update ROADMAP.md exit-criteria checkboxes if the change moved the phase forward.
 
@@ -80,6 +89,7 @@ A red CI blocks landing and should trigger a fix pass, but it does not justify k
   - commit current good state
   - push
   - continue
+- Before a new batch, make sure one of those pushed recovery points exists first.
 - Avoid batching unrelated work into one irreversible lump.
 
 ## Release pipeline

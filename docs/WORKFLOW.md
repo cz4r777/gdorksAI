@@ -64,6 +64,7 @@ A ticket is Done only when ALL of:
 - Discussion on the issue itself (not Slack, not chat). Future contributors should be able to reconstruct the *why* from the issue thread alone.
 - Decisions captured in the ticket via a `## Decision` heading and a one-line summary.
 - If implementation exists locally for more than one meaningful edit pass, push it. Local-only work is now considered a workflow smell unless the operator asked for a temporary hold.
+- Before each batch of related edits, make or confirm a pushed backup checkpoint first.
 
 ## Supervisor cadence
 
@@ -75,7 +76,11 @@ Every working session, the supervisor:
 
 ## Preferred execution style
 
+- Before a batch of edits:
+  - confirm the last pushed commit is a safe rollback point, or
+  - make a fresh commit and push before continuing
 - After each meaningful code update: commit, then push.
 - Use pushed commits as incremental backups and rollback points.
 - Keep work moving; do not let stacked merge queues stop unrelated progress.
 - Use PRs when they add clarity, not as mandatory gates for every small step.
+- Do not repeatedly ask the operator to merge before continuing unless landing order creates a real technical conflict.

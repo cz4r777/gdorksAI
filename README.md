@@ -22,6 +22,15 @@ This project now prefers immediate pushed checkpoints over long local-only holds
 
 If a change is risky, make smaller commits and push each checkpoint. The goal is to keep progress visible, reversible, and not blocked on stacked merge choreography.
 
+Before any batch of related edits, take a fresh backup checkpoint first:
+
+1. confirm the current branch is in a known-good state
+2. commit any finished work
+3. push that checkpoint
+4. start the next batch from there
+
+That backup-first rule is the default for coder work. Do not wait for a special merge window before pushing progress.
+
 ## What it does (target state)
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for phase exit criteria.
@@ -115,8 +124,8 @@ runtime/                  (gitignored) scope.json, events.jsonl
 
 ## Framework (how this project is run)
 
-- **Roles.** Supervisor (docs, ticket triage, design sign-off), Coder (one ticket → one branch → one PR), Security (per-PR audit against a focus list), Operator (merge decisions). Each lives in a separate session; handovers cross sessions as single-block ASCII blocks.
-- **Pipeline.** `Ticket → Design → Branch → Implement → CI gate → Security review → Operator merge`. CI runs `ruff` + `mypy --strict app/core` + `pytest` + import smoke. Red CI blocks review.
+- **Roles.** Supervisor (docs, ticket triage, design sign-off), Coder (ticket work and pushed checkpoints), Security (review against a focus list), Operator (accepts the next working baseline). Each lives in a separate session; handovers cross sessions as single-block ASCII blocks.
+- **Pipeline.** `Ticket → Design → Branch → Backup checkpoint → Implement → Commit → Push → CI/use → Review → Land when convenient`. CI runs `ruff` + `mypy --strict app/core` + `pytest` + import smoke. Red CI blocks landing, not visibility.
 - **Tickets.** Four templates in `.github/ISSUE_TEMPLATE/`: `feature`, `bug`, `dork-category`, `security`. Title format `P<phase>-T<n>: …` so they sort.
 - **Labels.** Apply with `bash scripts/setup-labels.sh cz4r777/gdorksAI`.
 
