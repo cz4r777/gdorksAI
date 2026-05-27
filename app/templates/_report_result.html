@@ -1,9 +1,11 @@
 <div class="mb-2 text-xs text-gray-500"
      data-state="report-ready"
      data-backend="{{ backend }}"
-     data-target="{{ target }}">
+     data-target="{{ target }}"
+     data-session-id="{{ session_id }}">
   AI ({{ backend }}) produced a Markdown report for <code>{{ target }}</code>.
-  Copy the block below into your engagement deliverables.
+  Saved as session <code>{{ session_id }}</code> at
+  <code>{{ session_path }}</code>.
 </div>
 <div class="border rounded bg-white p-3">
   <div class="flex items-center justify-end mb-1">

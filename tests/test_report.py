@@ -64,6 +64,7 @@ def client(
     monkeypatch.setenv("DORKS_DATA_PATH", str(corpus))
     monkeypatch.setenv("SCOPE_FILE", str(scope))
     monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    monkeypatch.setenv("SESSIONS_DIR", str(tmp_path / "sessions"))
     web.reset_registry()
     web.reset_adapter()
     scope_module.reset_default_guard()
@@ -165,6 +166,41 @@ def test_post_report_ai_backend_down_returns_503(client: TestClient) -> None:
 def test_post_report_missing_inputs_returns_400(client: TestClient) -> None:
     r = client.post("/report", data={"target": "", "session_log": ""})
     assert r.status_code == 400
+
+
+def test_post_report_persists_session_to_disk(
+    client: TestClient, tmp_path: Path
+) -> None:
+    fake = FakeAdapter(
+        "## Summary\n\nFinding on example.com.\n\n## Findings\n\n- one\n\n"
+        "## Recommendations\n\n- rotate\n\n## Methodology\n\nDorks."
+    )
+    _override(fake)
+    try:
+        r = client.post(
+            "/report",
+            data={"target": "example.com", "session_log": "log"},
+        )
+    finally:
+        _restore()
+    assert r.status_code == 200
+    body = r.text
+    # Session id surfaces in the response partial
+    import re
+
+    m = re.search(r'data-session-id="([^"]+)"', body)
+    assert m is not None
+    session_id = m.group(1)
+    sessions_root = tmp_path / "sessions"
+    session_dir = sessions_root / session_id
+    assert session_dir.is_dir()
+    report_md = (session_dir / "report.md").read_text(encoding="utf-8")
+    assert "## Summary" in report_md
+    meta = json.loads(
+        (session_dir / "meta.json").read_text(encoding="utf-8")
+    )
+    assert meta["target"] == "example.com"
+    assert meta["backend"] == "fake"
 
 
 def test_report_route_now_in_nav(client: TestClient) -> None:

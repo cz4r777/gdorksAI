@@ -48,6 +48,7 @@ from app.core.dorks import (
 from app.core.events import events_file, read_recent
 from app.core.health import run_health_checks
 from app.core.scope import OutOfScopeError
+from app.core.sessions import save_report
 from app.core.status import compute_snapshot
 
 _TEMPLATES_DIR = "app/templates"
@@ -693,6 +694,13 @@ async def report_submit(
             },
             status_code=422,
         )
+    saved = save_report(
+        target=target_clean,
+        markdown=resp.text,
+        backend=resp.backend,
+        prompt_filename=resp.prompt_filename,
+        prompt_hash=resp.prompt_hash,
+    )
     return templates.TemplateResponse(
         request,
         "_report_result.html",
@@ -700,5 +708,8 @@ async def report_submit(
             "markdown": resp.text,
             "target": target_clean,
             "backend": resp.backend,
+            "session_id": saved.session_id,
+            "session_path": str(saved.directory),
+            "report_path": str(saved.report_path),
         },
     )
