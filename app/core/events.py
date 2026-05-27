@@ -118,12 +118,15 @@ def record(
         data=dict(data),
     )
     path = events_file()
-    line = json.dumps(asdict(event), separators=(",", ":"))
+    # json.dumps is inside the try because a future caller could pass a
+    # non-serializable kwarg via **data; record() MUST NEVER raise (the
+    # diagnostic emit cannot break the request path it observes).
     try:
+        line = json.dumps(asdict(event), separators=(",", ":"))
         path.parent.mkdir(parents=True, exist_ok=True)
         with _LOCK, path.open("a", encoding="utf-8") as f:
             f.write(line + "\n")
-    except OSError as e:
+    except (OSError, TypeError, ValueError) as e:
         _LOG.warning("could not write event to %s: %s", path, e)
     return event
 

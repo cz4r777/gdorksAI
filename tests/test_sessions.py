@@ -50,9 +50,13 @@ def test_save_report_emits_session_saved_event(tmp_path: Path) -> None:
     assert len(matched) == 1
     e = matched[0]
     assert e.data["session_id"] == saved.session_id
-    assert e.data["target"] == "example.com"
     assert e.data["backend"] == "groq"
     assert e.data["prompt_hash_prefix"] == "b" * 12
+    # Metadata-only invariant: target MUST NOT appear in the event payload.
+    # Target is preserved in meta.json (operator's own file) but never in the
+    # diagnostic event log.
+    assert "target" not in e.data
+    assert "example.com" not in json.dumps(e.data)
     # No raw prompt hash leak — only first 12 chars
     assert "b" * 64 not in json.dumps(e.data)
 

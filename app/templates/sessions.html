@@ -12,7 +12,10 @@
   {% for s in sessions %}
   <li class="p-3" data-session-id="{{ s.session_id }}">
     <div class="flex items-baseline justify-between mb-1">
-      <code class="text-sm font-medium">{{ s.session_id }}</code>
+      <a href="/sessions/{{ s.session_id }}"
+         class="text-sm font-medium underline decoration-dotted">
+        <code>{{ s.session_id }}</code>
+      </a>
       <span class="text-[10px] text-gray-500">{{ s.ts }}</span>
     </div>
     <div class="text-xs text-gray-700">
