@@ -136,6 +136,25 @@ def test_post_query_substitutes_target_placeholder(client: TestClient) -> None:
     assert "site:example.com inurl:admin" in r.text
 
 
+def test_post_query_substitutes_authorized_target_literal(
+    client: TestClient,
+) -> None:
+    fake = FakeAdapter(
+        '{"dork": "site:AUTHORIZED_TARGET inurl:admin", '
+        '"category": "auth-pages", "rationale": ""}'
+    )
+    _override(fake)
+    try:
+        r = client.post(
+            "/query",
+            data={"target": "example.com", "intent": "find admin"},
+        )
+    finally:
+        _restore()
+    assert r.status_code == 200
+    assert "site:example.com inurl:admin" in r.text
+
+
 def test_post_query_unparseable_output_falls_back_to_raw(
     client: TestClient,
 ) -> None:

@@ -133,6 +133,13 @@ def _parse_query_suggestions(text: str, target: str) -> list[dict[str, Any]]:
     parses. Each suggestion has a pre-rendered Google URL so the template
     can render a clickable link directly.
     """
+    def _apply_target(value: str) -> str:
+        return (
+            value.replace("{target}", target)
+            .replace("AUTHORIZED_TARGET", target)
+            .replace("authorized_target", target)
+        )
+
     out: list[dict[str, Any]] = []
     for line in text.strip().splitlines():
         line = line.strip()
@@ -147,7 +154,7 @@ def _parse_query_suggestions(text: str, target: str) -> list[dict[str, Any]]:
         dork = str(obj.get("dork", "")).strip()
         if not dork:
             continue
-        rendered = dork.replace("{target}", target)
+        rendered = _apply_target(dork)
         out.append(
             {
                 "dork": dork,
@@ -160,7 +167,7 @@ def _parse_query_suggestions(text: str, target: str) -> list[dict[str, Any]]:
         )
     if not out:
         raw = text.strip()
-        rendered = raw.replace("{target}", target)
+        rendered = _apply_target(raw)
         out.append(
             {
                 "dork": raw,

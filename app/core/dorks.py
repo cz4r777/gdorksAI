@@ -18,6 +18,7 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import parse_qs, unquote_plus, urlparse
 
 from app.core.scope import ScopeGuard
 from app.core.scope import assert_in_scope as _default_assert_in_scope
@@ -48,6 +49,19 @@ class DorkRecord:
 
 def _slug(value: str) -> str:
     return _SLUG_RE.sub("-", value.lower()).strip("-")
+
+
+def _normalize_query(raw: str) -> str:
+    query = raw.strip()
+    if not query:
+        return ""
+    parsed = urlparse(query)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        qs = parse_qs(parsed.query)
+        q_values = qs.get("q")
+        if q_values:
+            query = unquote_plus(q_values[0]).strip()
+    return query.replace("{}", _TARGET_PLACEHOLDER)
 
 
 class DorkRegistry:
@@ -89,6 +103,7 @@ class DorkRegistry:
                 with txt.open("r", encoding="utf-8", errors="replace") as f:
                     for line_no, raw in enumerate(f, start=1):
                         query = raw.strip()
+                        query = _normalize_query(query)
                         if not query or query.startswith("#"):
                             continue
                         rid = f"{_slug(category)}/{_slug(txt.stem)}#{line_no}"
@@ -105,8 +120,11 @@ class DorkRegistry:
             data = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as e:
             raise RegistryError(f"malformed dork catalog: {path}: {e}") from e
+        if isinstance(data, dict):
+            yield from DorkRegistry._load_from_json_dict(data, path)
+            return
         if not isinstance(data, list):
-            raise RegistryError(f"dork catalog must be a list: {path}")
+            raise RegistryError(f"dork catalog must be a list or object: {path}")
         source = path.name
         for cat_idx, entry in enumerate(data):
             if not isinstance(entry, dict):
@@ -118,7 +136,7 @@ class DorkRegistry:
                     f"catalog entry {cat_idx} 'queries' must be a list"
                 )
             for q_idx, q in enumerate(queries):
-                query = str(q).strip()
+                query = _normalize_query(str(q))
                 if not query:
                     continue
                 rid = f"json/{_slug(category)}#{cat_idx}.{q_idx}"
@@ -128,6 +146,24 @@ class DorkRegistry:
                     query=query,
                     source_file=source,
                 )
+
+    @staticmethod
+    def _load_from_json_dict(
+        data: dict[object, object], path: Path
+    ) -> Iterable[DorkRecord]:
+        source = path.name
+        for idx, (category_raw, query_raw) in enumerate(data.items()):
+            category = str(category_raw).strip() or "uncategorized"
+            query = _normalize_query(str(query_raw))
+            if not query:
+                continue
+            rid = f"json/{_slug(category)}#{idx}"
+            yield DorkRecord(
+                id=rid,
+                category=category,
+                query=query,
+                source_file=source,
+            )
 
     def __len__(self) -> int:
         return len(self._records)
