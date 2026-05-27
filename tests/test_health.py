@@ -51,6 +51,62 @@ async def test_probe_ollama_reachable(env: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_probe_ollama_models_all_installed(
+    env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OLLAMA_MODEL_QUERY", "llama3.1:8b-instruct")
+    monkeypatch.setenv("OLLAMA_MODEL_TRIAGE", "llama3.1:8b-instruct")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "models": [
+                    {"name": "llama3.1:8b-instruct"},
+                    {"name": "qwen2.5:14b-instruct"},
+                ]
+            },
+        )
+
+    with _stub_async_client(httpx.MockTransport(handler)):
+        e = await health.probe_ollama_models()
+    assert e.level == LEVEL_INFO
+    assert e.data["missing"] == []
+    assert e.data["by_role"]["query_gen"]["installed"] is True
+    assert "llama3.1:8b-instruct" in e.data["installed"]
+
+
+@pytest.mark.asyncio
+async def test_probe_ollama_models_missing_warned(
+    env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OLLAMA_MODEL_QUERY", "llama3.1:8b-instruct")
+    monkeypatch.setenv("OLLAMA_MODEL_REPORT", "qwen2.5:14b-instruct")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, json={"models": [{"name": "llama3.1:8b-instruct"}]}
+        )
+
+    with _stub_async_client(httpx.MockTransport(handler)):
+        e = await health.probe_ollama_models()
+    assert e.level == LEVEL_WARN
+    assert "qwen2.5:14b-instruct" in str(e.data["missing"])
+    assert e.data["by_role"]["report"]["installed"] is False
+
+
+@pytest.mark.asyncio
+async def test_probe_ollama_models_unreachable_warned(env: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("down")
+
+    with _stub_async_client(httpx.MockTransport(handler)):
+        e = await health.probe_ollama_models()
+    assert e.level == LEVEL_WARN
+    assert e.data["reachable"] is False
+
+
+@pytest.mark.asyncio
 async def test_probe_ollama_connection_error(env: Path) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("nope")
@@ -205,8 +261,11 @@ async def test_run_health_checks_emits_one_event_per_probe_plus_summary(
         events = await health.run_health_checks()
 
     kinds = [e.kind for e in events]
+    from app.core.events import KIND_OLLAMA_MODELS_CHECK
+
     assert kinds == [
         KIND_OLLAMA_CHECK,
+        KIND_OLLAMA_MODELS_CHECK,
         KIND_GROQ_CHECK,
         KIND_REGISTRY_LOADED,
         KIND_SCOPE_LOADED,

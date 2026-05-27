@@ -44,6 +44,7 @@ def test_snapshot_missing_when_no_events(events_file: Path) -> None:
     snap = compute_snapshot(_app())
     assert snap.overall == OVERALL_MISSING
     assert snap.ollama is None
+    assert snap.ollama_models is None
     assert snap.groq is None
     assert snap.registry is None
     assert snap.scope is None

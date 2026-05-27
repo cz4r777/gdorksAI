@@ -23,6 +23,7 @@ from app.capabilities import MenuItem, compute_menu
 from app.core.events import (
     KIND_GROQ_CHECK,
     KIND_OLLAMA_CHECK,
+    KIND_OLLAMA_MODELS_CHECK,
     KIND_PROMPTS_CHECK,
     KIND_REGISTRY_LOADED,
     KIND_SCOPE_LOADED,
@@ -42,6 +43,7 @@ OVERALL_MISSING = "missing"
 class StatusSnapshot:
     overall: str
     ollama: Event | None
+    ollama_models: Event | None
     groq: Event | None
     registry: Event | None
     scope: Event | None
@@ -74,13 +76,17 @@ def compute_snapshot(app: FastAPI) -> StatusSnapshot:
     events = read_recent(500)
     by_kind = _latest_by_kind(events)
     ollama = by_kind.get(KIND_OLLAMA_CHECK)
+    ollama_models = by_kind.get(KIND_OLLAMA_MODELS_CHECK)
     groq = by_kind.get(KIND_GROQ_CHECK)
     registry = by_kind.get(KIND_REGISTRY_LOADED)
     scope = by_kind.get(KIND_SCOPE_LOADED)
     prompts = by_kind.get(KIND_PROMPTS_CHECK)
     return StatusSnapshot(
-        overall=_overall([ollama, groq, registry, scope, prompts]),
+        overall=_overall(
+            [ollama, ollama_models, groq, registry, scope, prompts]
+        ),
         ollama=ollama,
+        ollama_models=ollama_models,
         groq=groq,
         registry=registry,
         scope=scope,
