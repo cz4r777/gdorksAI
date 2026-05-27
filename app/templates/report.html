@@ -66,5 +66,7 @@ Next step:
   </button>
 </form>
 
-<section id="report-result" aria-live="polite"></section>
+<section id="report-result" aria-live="polite">
+  {% if embedded_result_html %}{{ embedded_result_html | safe }}{% endif %}
+</section>
 {% endblock %}

@@ -6,6 +6,21 @@
   <title>gdorksAI</title>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // If HTMX failed to load (CDN blocked, in-app browser CSP, etc.), the
+    // forms still work via standard POST — the server returns a full page
+    // with embedded results. Surface a visible hint so operators know why
+    // there's no in-place swap.
+    window.addEventListener("DOMContentLoaded", function () {
+      if (typeof window.htmx === "undefined") {
+        var b = document.createElement("div");
+        b.setAttribute("data-testid", "htmx-fallback-banner");
+        b.className = "max-w-4xl mx-auto px-6 py-2 text-xs bg-amber-50 text-amber-900 border-b border-amber-200";
+        b.innerHTML = "HTMX did not load (CDN blocked or offline). Forms still work via standard POST; the page will reload with results embedded.";
+        document.body.insertBefore(b, document.body.firstChild);
+      }
+    });
+  </script>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans">
   {% set menu = compute_menu(request.app) %}
