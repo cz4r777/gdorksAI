@@ -47,6 +47,25 @@ def test_home_returns_html_with_categories(client: TestClient) -> None:
     assert "<html" in r.text.lower()
 
 
+def test_home_search_box_has_category_dropdown(client: TestClient) -> None:
+    """The search box must surface a category dropdown so the operator can
+    see every available group of dorks at a glance."""
+    r = client.get("/")
+    body = r.text
+    # The select element exists alongside the search input
+    assert '<select' in body
+    assert 'id="q-category"' in body
+    assert 'name="category"' in body
+    # Default option lists category count
+    assert "All categories (" in body
+    # Every category appears as an option
+    assert '<option value="SQLi">SQLi</option>' in body
+    # The dropdown is wired to /search via HTMX
+    assert 'hx-get="/search"' in body
+    # Search input includes the category from the dropdown
+    assert 'hx-include="#q-category"' in body
+
+
 def test_search_returns_partial(client: TestClient) -> None:
     r = client.get("/search", params={"q": "inurl"})
     assert r.status_code == 200
