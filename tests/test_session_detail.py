@@ -66,7 +66,7 @@ def test_session_detail_page_renders(client: TestClient) -> None:
     assert "## Summary" in body
     assert 'data-testid="session-meta"' in body
     assert 'data-testid="download-report"' in body
-    assert 'href="/sessions/{}/report.md"'.format(saved.session_id) in body
+    assert f'href="/sessions/{saved.session_id}/report.md"' in body
 
 
 def test_session_detail_unknown_returns_404(client: TestClient) -> None:
