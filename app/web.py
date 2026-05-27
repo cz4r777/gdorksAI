@@ -13,6 +13,9 @@ Endpoints:
 - ``GET /pivot``      pivot page form (paste a triaged finding)
 - ``POST /pivot``     calls AI adapter (pivot), parses suggestions for
                       same-target adjacent dorks, returns partial
+- ``GET /report``     report page form (paste session log)
+- ``POST /report``    calls AI adapter (report), returns Markdown
+                      session writeup
 
 The page is intentionally inert: no auto-fetch, no scraping, no
 background navigation. The operator clicks links in their own browser.

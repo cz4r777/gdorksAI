@@ -1,0 +1,22 @@
+<div class="mb-2 text-xs text-gray-500"
+     data-state="report-ready"
+     data-backend="{{ backend }}"
+     data-target="{{ target }}">
+  AI ({{ backend }}) produced a Markdown report for <code>{{ target }}</code>.
+  Copy the block below into your engagement deliverables.
+</div>
+<div class="border rounded bg-white p-3">
+  <div class="flex items-center justify-end mb-1">
+    <button type="button"
+            class="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-100"
+            onclick="navigator.clipboard.writeText(document.getElementById('report-md').innerText)">
+      Copy
+    </button>
+  </div>
+  <pre id="report-md"
+       class="text-xs whitespace-pre-wrap font-mono leading-snug overflow-x-auto">{{ markdown }}</pre>
+</div>
+<p class="text-xs text-gray-500 mt-2">
+  Report content is metadata only — no exploits, no credentials, no
+  off-target references. Review before sharing.
+</p>
