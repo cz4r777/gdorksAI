@@ -33,6 +33,7 @@ def client(
 
     monkeypatch.setenv("DORKS_DATA_PATH", str(corpus))
     monkeypatch.setenv("SCOPE_FILE", str(scope_file))
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
     web.reset_registry()
     scope_module.reset_default_guard()
     return TestClient(app)
@@ -115,3 +116,170 @@ def test_healthz_still_works(client: TestClient) -> None:
     r = client.get("/healthz")
     assert r.status_code == 200
     assert r.json() == {"status": "ok"}
+
+
+def test_home_renders_navigation_with_phase_state(client: TestClient) -> None:
+    r = client.get("/")
+    assert r.status_code == 200
+    body = r.text
+    assert 'data-testid="primary-nav"' in body
+    assert 'data-build-state="phase-1"' in body
+    assert 'data-stage="home"' in body
+    assert 'data-stage="query"' in body
+    assert 'data-stage="status"' in body
+
+
+def test_home_marks_phase1_stages_available(client: TestClient) -> None:
+    r = client.get("/")
+    body = r.text
+    assert 'data-stage="home"' in body and 'data-available="true"' in body
+
+
+def test_home_marks_phase2_stages_coming_soon(client: TestClient) -> None:
+    r = client.get("/")
+    body = r.text
+    assert "coming soon" in body.lower()
+    for stage in ("query", "triage", "pivot", "report"):
+        assert f'data-stage="{stage}"' in body
+    # at least one unavailable stage rendered as aria-disabled
+    assert 'aria-disabled="true"' in body
+
+
+def test_diagnostics_page_renders_empty_when_no_events(client: TestClient) -> None:
+    r = client.get("/diagnostics")
+    assert r.status_code == 200
+    assert "Diagnostics" in r.text
+    # Lifespan-emitted startup events should already exist
+    assert "startup" in r.text or "No events yet" in r.text
+
+
+def test_diagnostics_refresh_runs_health_and_returns_partial(
+    client: TestClient,
+) -> None:
+    r = client.post("/diagnostics/refresh")
+    assert r.status_code == 200
+    body = r.text
+    assert "<html" not in body.lower()
+    assert "events-table" in body
+    assert "health" in body or "ollama" in body
+
+
+def test_diagnostics_jsonl_streams_raw_file(client: TestClient) -> None:
+    # Cause some events to be written
+    client.post("/diagnostics/refresh")
+    r = client.get("/diagnostics.jsonl")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("application/x-ndjson")
+    # Each line should be valid JSON
+    for line in r.text.splitlines():
+        if not line.strip():
+            continue
+        json.loads(line)
+
+
+def test_nav_includes_diagnostics(client: TestClient) -> None:
+    r = client.get("/")
+    assert 'data-stage="diagnostics"' in r.text
+    assert 'data-available="true"' in r.text  # /diagnostics IS mounted
+
+
+def test_status_page_renders(client: TestClient) -> None:
+    r = client.get("/status")
+    assert r.status_code == 200
+    body = r.text
+    assert "Status" in body
+    # No probes have been triggered through the web layer yet beyond lifespan
+    # events, so component cards should show as "not yet observed" or "ok".
+    assert 'data-component="ollama"' in body
+    assert 'data-component="groq"' in body
+    assert 'data-component="registry"' in body
+    assert 'data-component="scope"' in body
+    assert 'data-component="prompts"' in body
+
+
+def test_status_refresh_returns_partial_with_probes(client: TestClient) -> None:
+    r = client.post("/status/refresh")
+    assert r.status_code == 200
+    body = r.text
+    # Partial — should not include <html>
+    assert "<html" not in body.lower()
+    assert 'id="status-cards"' in body
+    # After running probes at least one component card has a level badge
+    assert "data-level=" in body
+
+
+def test_status_route_is_now_in_nav(client: TestClient) -> None:
+    r = client.get("/")
+    body = r.text
+    # /status is mounted now, so the menu should mark it available
+    assert 'data-stage="status"' in body
+    # The "status" stage block should include data-available="true"
+    import re
+
+    m = re.search(
+        r'data-stage="status"\s+data-available="(true|false)"', body
+    )
+    assert m is not None
+    assert m.group(1) == "true"
+
+
+def test_home_shows_category_counts(client: TestClient) -> None:
+    r = client.get("/")
+    body = r.text
+    # Category card shows count next to name
+    assert "SQLi" in body
+    assert "(1)" in body  # _seed_minimal_corpus puts exactly 1 dork in SQLi
+    # The total dorks summary is rendered
+    assert "1 total dorks" in body
+    # And a link to /dorks exists
+    assert 'href="/dorks"' in body
+
+
+def test_home_categories_link_to_category_page(client: TestClient) -> None:
+    r = client.get("/")
+    body = r.text
+    assert 'href="/category/SQLi"' in body
+    assert 'data-category="SQLi"' in body
+
+
+def test_category_page_renders_grouped(client: TestClient) -> None:
+    r = client.get("/category/SQLi")
+    assert r.status_code == 200
+    body = r.text
+    # Breadcrumb to home
+    assert 'href="/"' in body
+    # Source-file group header
+    assert "basic.txt" in body
+    # Dork query content
+    assert "inurl:id=" in body
+    # Render form exists
+    assert 'hx-post="/render"' in body
+
+
+def test_unknown_category_returns_404(client: TestClient) -> None:
+    r = client.get("/category/NoSuchCategory")
+    assert r.status_code == 404
+    assert "Unknown category" in r.text
+
+
+def test_dorks_paginated_list(client: TestClient) -> None:
+    r = client.get("/dorks")
+    assert r.status_code == 200
+    body = r.text
+    assert "All dorks" in body
+    assert "inurl:id=" in body
+    # Each dork links back to its category
+    assert 'href="/category/SQLi"' in body
+
+
+def test_dorks_pagination_caps_per(client: TestClient) -> None:
+    # per is capped at 200; even an absurd value doesn't break the page
+    r = client.get("/dorks", params={"per": 99999})
+    assert r.status_code == 200
+    assert "All dorks" in r.text
+
+
+def test_dorks_page_below_one_normalized(client: TestClient) -> None:
+    r = client.get("/dorks", params={"page": -3})
+    assert r.status_code == 200
+    assert "page 1" in r.text

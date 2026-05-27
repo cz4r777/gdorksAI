@@ -10,13 +10,19 @@ Built for authorized engagements only. No scraping, no headless browser, no anti
 
 Phase 1 surface is implemented and Phase 2/3 routes render as "coming soon" via live capability detection. What's on `main` vs in flight is exposed in the UI itself — open `/diagnostics` and the nav bar's build-state badge shows the truth.
 
-| Phase | Scope | State |
-|---|---|---|
-| 0 | Framework, CI, docs, ticket system | merged to `main` |
-| 1 | Registry, scope guard, web UI, event log, health probes, nav menu | implemented across PRs #14, #15, #18 |
-| 2 | Local AI adapter (Ollama → Groq); `/query`, `/triage` | designed; coding next |
-| 3 | `/pivot`, `/report`, session persistence | planned |
-| 4 | Hardening, security headers, vendored assets, `v0.1.0` | planned |
+## Working style
+
+This project now prefers immediate pushed checkpoints over long local-only holds:
+
+1. make a code change
+2. commit it
+3. push it immediately
+4. use the pushed branch as the backup / rollback point
+5. review or merge later when convenient
+
+If a change is risky, make smaller commits and push each checkpoint. The goal is to keep progress visible, reversible, and not blocked on stacked merge choreography.
+
+## What it does (target state)
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for phase exit criteria.
 
@@ -120,7 +126,7 @@ Full rules: [docs/PIPELINE.md](docs/PIPELINE.md) and [docs/WORKFLOW.md](docs/WOR
 
 - [Architecture](docs/ARCHITECTURE.md) — system sketch, components, data flow
 - [Roadmap](docs/ROADMAP.md) — phase plan and exit criteria
-- [Pipeline](docs/PIPELINE.md) — change flow
+- [Pipeline](docs/PIPELINE.md) — how changes flow from ticket to pushed code and landing
 - [Workflow](docs/WORKFLOW.md) — roles, ticket types, kanban
 - [AI integration](docs/AI_INTEGRATION.md) — Ollama / Groq adapter, prompt versioning, scope-guard integration
 - [Security](docs/SECURITY.md) — ethics, scope-guard contract, threat model, disclosure

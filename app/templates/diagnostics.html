@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="mb-4 flex items-center gap-3">
+  <h2 class="text-lg font-medium">Diagnostics</h2>
+  <button type="button"
+          class="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-100"
+          hx-post="/diagnostics/refresh"
+          hx-target="#events-table"
+          hx-swap="outerHTML">
+    Run health check
+  </button>
+  <a href="/diagnostics.jsonl" class="text-xs underline" target="_blank">
+    raw events.jsonl
+  </a>
+</section>
+
+<p class="text-xs text-gray-500 mb-3">
+  Source of truth: <code>{{ events_file }}</code>.
+  Append-only JSON-lines. Newest events at the bottom of the table.
+</p>
+
+{% include "_events_table.html" %}
+{% endblock %}

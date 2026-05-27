@@ -1,18 +1,27 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="mb-6">
-  <h2 class="text-lg font-medium mb-2">Categories</h2>
+  <div class="flex items-baseline justify-between mb-2">
+    <h2 class="text-lg font-medium">Categories</h2>
+    {% if categories %}
+      <span class="text-xs text-gray-500">
+        {{ categories|length }} categor{{ "y" if categories|length == 1 else "ies" }}
+        &middot; {{ total }} total dorks &middot;
+        <a class="underline" href="/dorks">view all</a>
+      </span>
+    {% endif %}
+  </div>
   {% if categories %}
     <ul class="grid grid-cols-2 sm:grid-cols-3 gap-2">
     {% for c in categories %}
       <li>
-        <button type="button"
-                class="w-full text-left text-sm underline decoration-dotted"
-                hx-get="/search"
-                hx-vals='{"category": "{{ c|e }}"}'
-                hx-target="#results">
-          {{ c }}
-        </button>
+        <a href="/category/{{ c|urlencode }}"
+           class="block border rounded p-2 bg-white hover:bg-gray-50 text-sm"
+           data-stage="category"
+           data-category="{{ c }}">
+          <span class="font-medium">{{ c }}</span>
+          <span class="text-xs text-gray-500 ml-1">({{ counts[c] }})</span>
+        </a>
       </li>
     {% endfor %}
     </ul>

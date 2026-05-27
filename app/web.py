@@ -17,22 +17,28 @@ from typing import Annotated
 from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 
+from app.capabilities import build_state, compute_menu
 from app.core.dorks import (
     DorkNotFoundError,
     DorkRegistry,
     InvalidTargetError,
     load_default_registry,
 )
+from app.core.events import events_file, read_recent
+from app.core.health import run_health_checks
 from app.core.scope import OutOfScopeError
+from app.core.status import compute_snapshot
 
 _TEMPLATES_DIR = "app/templates"
 _RESULT_CAP = 200
 
 router = APIRouter()
 templates = Jinja2Templates(directory=_TEMPLATES_DIR)
+templates.env.globals["compute_menu"] = compute_menu
+templates.env.globals["build_state"] = build_state
 
 _registry_singleton: DorkRegistry | None = None
 
@@ -58,12 +64,118 @@ def google_search_url(query: str) -> str:
 RegistryDep = Annotated[DorkRegistry, Depends(get_registry)]
 
 
+@router.get("/diagnostics", response_class=HTMLResponse)
+def diagnostics(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "diagnostics.html",
+        {"events": read_recent(200), "events_file": str(events_file())},
+    )
+
+
+@router.post("/diagnostics/refresh", response_class=HTMLResponse)
+async def diagnostics_refresh(request: Request) -> HTMLResponse:
+    await run_health_checks()
+    return templates.TemplateResponse(
+        request,
+        "_events_table.html",
+        {"events": read_recent(200)},
+    )
+
+
+@router.get("/diagnostics.jsonl")
+def diagnostics_jsonl() -> Response:
+    path = events_file()
+    if not path.is_file():
+        return Response(content="", media_type="application/x-ndjson")
+    return FileResponse(path, media_type="application/x-ndjson")
+
+
+@router.get("/status", response_class=HTMLResponse)
+def status_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "status.html",
+        {"snapshot": compute_snapshot(request.app)},
+    )
+
+
+@router.post("/status/refresh", response_class=HTMLResponse)
+async def status_refresh(request: Request) -> HTMLResponse:
+    await run_health_checks()
+    return templates.TemplateResponse(
+        request,
+        "_status_cards.html",
+        {"snapshot": compute_snapshot(request.app)},
+    )
+
+
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request, registry: RegistryDep) -> HTMLResponse:
+    categories = registry.list_categories()
+    counts = {c: len(registry.search(category=c)) for c in categories}
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"categories": registry.list_categories()},
+        {
+            "categories": categories,
+            "counts": counts,
+            "total": len(registry),
+        },
+    )
+
+
+@router.get("/category/{name}", response_class=HTMLResponse)
+def category_page(
+    request: Request, name: str, registry: RegistryDep
+) -> HTMLResponse:
+    hits = registry.search(category=name)
+    groups: dict[str, list] = {}
+    for r in hits:
+        groups.setdefault(r.source_file, []).append(r)
+    status = 200 if hits else 404
+    return templates.TemplateResponse(
+        request,
+        "category.html",
+        {
+            "category": name,
+            "groups": groups,
+            "total": len(hits),
+            "categories": registry.list_categories(),
+        },
+        status_code=status,
+    )
+
+
+_DORKS_PER_PAGE_DEFAULT = 50
+_DORKS_PER_PAGE_MAX = 200
+
+
+@router.get("/dorks", response_class=HTMLResponse)
+def dorks_list(
+    request: Request,
+    registry: RegistryDep,
+    page: int = 1,
+    per: int = _DORKS_PER_PAGE_DEFAULT,
+) -> HTMLResponse:
+    page = max(1, page)
+    per = max(1, min(per, _DORKS_PER_PAGE_MAX))
+    all_hits = registry.search()
+    total = len(all_hits)
+    start = (page - 1) * per
+    end = start + per
+    hits = all_hits[start:end]
+    pages = max(1, (total + per - 1) // per)
+    return templates.TemplateResponse(
+        request,
+        "dorks.html",
+        {
+            "hits": hits,
+            "page": page,
+            "per": per,
+            "total": total,
+            "pages": pages,
+        },
     )
 
 

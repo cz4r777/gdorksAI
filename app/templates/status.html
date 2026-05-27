@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="mb-4 flex items-center gap-3">
+  <h2 class="text-lg font-medium">Status</h2>
+  {% set s = snapshot %}
+  {% if s.overall == "ok" %}
+    <span class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs"
+          data-overall="ok">all probes ok</span>
+  {% elif s.overall == "degraded" %}
+    <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs"
+          data-overall="degraded">degraded</span>
+  {% else %}
+    <span class="px-2 py-0.5 rounded bg-gray-200 text-gray-800 text-xs"
+          data-overall="missing">no probes run yet</span>
+  {% endif %}
+  <button type="button"
+          class="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-100"
+          hx-post="/status/refresh"
+          hx-target="#status-cards"
+          hx-swap="outerHTML">
+    Run probes now
+  </button>
+  <a href="/diagnostics" class="text-xs underline">full event log</a>
+</section>
+
+{% include "_status_cards.html" %}
+
+<section class="mt-6">
+  <h3 class="text-sm font-medium mb-2">Workflow capabilities (live)</h3>
+  <ul class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+    {% for item in s.menu %}
+    <li class="text-xs border rounded p-2 bg-white"
+        data-stage="{{ item.id }}"
+        data-available="{{ 'true' if item.available else 'false' }}">
+      <div class="font-medium">
+        {{ item.label }}
+        <span class="text-[10px] text-gray-500">phase {{ item.phase }}</span>
+      </div>
+      <div class="text-[11px] text-gray-500">{{ item.hint }}</div>
+      {% if item.available %}
+        <div class="mt-1 text-[10px] text-green-700">mounted at {{ item.path }}</div>
+      {% else %}
+        <div class="mt-1 text-[10px] text-gray-400">coming soon</div>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}
