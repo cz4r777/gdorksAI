@@ -123,7 +123,8 @@ def test_home_renders_navigation_with_phase_state(client: TestClient) -> None:
     assert r.status_code == 200
     body = r.text
     assert 'data-testid="primary-nav"' in body
-    assert 'data-build-state="phase-1"' in body
+    # /pivot is mounted via P3-T1 on this branch, so build_state flips to phase-3.
+    assert 'data-build-state="phase-3"' in body
     assert 'data-stage="home"' in body
     assert 'data-stage="query"' in body
     assert 'data-stage="status"' in body
@@ -139,7 +140,9 @@ def test_home_marks_phase2_stages_coming_soon(client: TestClient) -> None:
     r = client.get("/")
     body = r.text
     assert "coming soon" in body.lower()
-    for stage in ("query", "triage", "pivot", "report"):
+    # /query, /triage, and /pivot are mounted now; only report/status remain
+    # coming-soon on this branch.
+    for stage in ("report", "status"):
         assert f'data-stage="{stage}"' in body
     # at least one unavailable stage rendered as aria-disabled
     assert 'aria-disabled="true"' in body

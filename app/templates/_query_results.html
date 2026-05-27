@@ -1,0 +1,28 @@
+<div class="mb-2 text-xs text-gray-500">
+  AI ({{ backend }}) drafted {{ suggestions|length }}
+  suggestion{{ "s" if suggestions|length != 1 else "" }}
+  for <code>{{ target }}</code>.
+</div>
+<ul class="divide-y border rounded bg-white">
+{% for s in suggestions %}
+  <li class="p-3" data-structured="{{ 'true' if s.structured else 'false' }}">
+    <div class="flex items-baseline justify-between mb-1">
+      <span class="text-xs px-2 py-0.5 rounded
+        {{ 'bg-blue-100 text-blue-800' if s.structured else 'bg-amber-100 text-amber-800' }}">
+        {{ s.category }}{{ "" if s.structured else " (unparsed)" }}
+      </span>
+    </div>
+    <code class="block text-sm mb-2 break-all">{{ s.rendered }}</code>
+    {% if s.rationale %}
+      <div class="text-xs text-gray-600 mb-2">{{ s.rationale }}</div>
+    {% endif %}
+    <a href="{{ s.url }}" target="_blank" rel="noopener noreferrer"
+       class="text-blue-700 underline break-all text-sm">
+      {{ s.url }}
+    </a>
+  </li>
+{% endfor %}
+</ul>
+<p class="text-xs text-gray-500 mt-2">
+  Click to open in your own browser. The app never fetches Google for you.
+</p>
