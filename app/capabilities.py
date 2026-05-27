@@ -76,6 +76,13 @@ _STAGES: list[tuple[str, str, str, str, str]] = [
         "AI writes a Markdown report for the session.",
         "3",
     ),
+    (
+        "sessions",
+        "Sessions",
+        "/sessions",
+        "Browse saved /report writeups on disk.",
+        "3",
+    ),
 ]
 
 

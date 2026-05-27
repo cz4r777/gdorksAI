@@ -8,6 +8,8 @@ Built for authorized engagements only. No scraping, no headless browser, no anti
 
 ## Status
 
+**`v0.1.0-alpha.1`** — first tagged alpha (2026-05-27). See [CHANGELOG.md](CHANGELOG.md).
+
 Phase 1, 2, and 3 surfaces are all on `main`. The nav bar's build-state badge reads `phase-3` and every workflow stage (Home, Diagnostics, Status, Query, Triage, Pivot, Report) is mounted. What's actually running is exposed in the UI itself — open `/status` or `/diagnostics` for a live snapshot derived from the diagnostic event log.
 
 ## Working style
@@ -30,10 +32,6 @@ Before any batch of related edits, take a fresh backup checkpoint first:
 4. start the next batch from there
 
 That backup-first rule is the default for coder work. Do not wait for a special merge window before pushing progress.
-
-## What it does (target state)
-
-See [docs/ROADMAP.md](docs/ROADMAP.md) for phase exit criteria.
 
 ## Operating principles
 
@@ -158,6 +156,8 @@ The dork-category taxonomy in the public ecosystem traces back to [@Ishanoshada]
 
 This is a fresh repository with no fork lineage.
 
-## License
+## License & credit
 
-MIT. See [LICENSE](LICENSE).
+MIT — free to use, modify, and redistribute, **provided the copyright notice is retained**. See [LICENSE](LICENSE).
+
+Copyright © 2026 Conrad Brookes &lt;conrad.brookes@gmail.com&gt;. If you use, fork, or build on this project, please keep the attribution in source and in any user-facing About / Credits surface.
