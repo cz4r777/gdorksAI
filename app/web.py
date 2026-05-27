@@ -56,7 +56,7 @@ from app.core.events import (
 )
 from app.core.health import run_health_checks
 from app.core.scope import OutOfScopeError
-from app.core.sessions import save_report
+from app.core.sessions import list_sessions, save_report
 from app.core.status import compute_snapshot
 
 _TEMPLATES_DIR = "app/templates"
@@ -674,6 +674,16 @@ async def pivot_submit(
             "target": target_clean,
             "backend": resp.backend,
         },
+    )
+
+
+@router.get("/sessions", response_class=HTMLResponse)
+def sessions_index(request: Request) -> HTMLResponse:
+    sessions = list_sessions(limit=200)
+    return templates.TemplateResponse(
+        request,
+        "sessions.html",
+        {"sessions": sessions, "total": len(sessions)},
     )
 
 

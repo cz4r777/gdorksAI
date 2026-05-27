@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="mb-4 flex items-baseline justify-between">
+  <h2 class="text-lg font-medium">Saved sessions</h2>
+  <span class="text-xs text-gray-500">
+    {{ total }} session{{ "s" if total != 1 else "" }} on disk
+  </span>
+</section>
+
+{% if sessions %}
+<ul class="divide-y border rounded bg-white" data-testid="sessions-list">
+  {% for s in sessions %}
+  <li class="p-3" data-session-id="{{ s.session_id }}">
+    <div class="flex items-baseline justify-between mb-1">
+      <code class="text-sm font-medium">{{ s.session_id }}</code>
+      <span class="text-[10px] text-gray-500">{{ s.ts }}</span>
+    </div>
+    <div class="text-xs text-gray-700">
+      target <code>{{ s.target }}</code>
+      &middot; backend <code>{{ s.backend }}</code>
+      &middot; prompt <code>{{ s.prompt_filename }}</code>
+    </div>
+    <div class="text-[10px] text-gray-500 mt-1 font-mono break-all">
+      {{ s.report_path }}
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+<p class="text-xs text-gray-500 mt-2">
+  Showing newest first, capped at 200.
+</p>
+{% else %}
+<p class="text-sm text-gray-500">
+  No saved sessions yet. Run a <a href="/report" class="underline">/report</a>
+  pass and it will land here.
+</p>
+{% endif %}
+{% endblock %}
