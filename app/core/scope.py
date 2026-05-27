@@ -134,6 +134,48 @@ class ScopeGuard:
             )
             raise OutOfScopeError(f"target out of scope: {target!r}")
 
+    def add_target(self, target: str) -> bool:
+        """Append a target to the scope file and refresh the in-memory state.
+
+        Returns True if the target was added, False if it was already
+        present (idempotent). Creates the parent directory and the file
+        with a fresh ``{"targets": []}`` structure if either is missing.
+
+        This is the operator-facing "Authorize" path used by the UI 403
+        block. The button click IS the authorization — same security
+        model, just one click instead of editing JSON.
+        """
+        host = _normalize(target)
+        if not host:
+            raise ValueError("target is empty")
+        self._load()
+        if host.startswith("*."):
+            suffix = host[2:]
+            if suffix in self._wildcards:
+                return False
+        elif host in self._exact:
+            return False
+        # Read current file (or treat missing as {})
+        try:
+            raw = json.loads(self._path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            raw = {}
+        if not isinstance(raw, dict):
+            raw = {}
+        targets = raw.get("targets")
+        if not isinstance(targets, list):
+            targets = []
+        if host not in [str(t).strip().lower() for t in targets]:
+            targets.append(host)
+        raw["targets"] = targets
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._path.write_text(
+            json.dumps(raw, indent=2) + "\n", encoding="utf-8"
+        )
+        # Reset cached parse so the next is_in_scope() picks up the new entry.
+        self._loaded = False
+        return True
+
 
 _default_guard: ScopeGuard | None = None
 
