@@ -60,6 +60,7 @@ def test_compute_menu_lists_all_stages_even_when_unavailable() -> None:
         "triage",
         "pivot",
         "report",
+        "sessions",
     ]
     assert all(m["available"] is False for m in menu)
 
