@@ -7,6 +7,15 @@
     The local AI produces a structured Markdown report against the authorized
     target. No automation runs — you copy the Markdown out.
   </p>
+  {% if from_session %}
+  <div class="mt-2 text-xs px-2 py-1 inline-block rounded bg-blue-50 text-blue-800"
+       data-testid="prefill-banner">
+    Pre-filled from session
+    <a href="/sessions/{{ from_session.session_id }}"
+       class="underline"><code>{{ from_session.session_id }}</code></a>.
+    Edit the textarea before generating.
+  </div>
+  {% endif %}
 </section>
 
 <form hx-post="/report" hx-target="#report-result"
@@ -14,6 +23,7 @@
   <label class="block text-sm font-medium mb-1" for="target">Target</label>
   <input id="target" name="target" type="text" required
          placeholder="example.com — must be in scope"
+         value="{{ prefill_target|default('') }}"
          class="w-full border rounded px-2 py-1 text-sm mb-3"
          autocomplete="off">
   <label class="block text-sm font-medium mb-1" for="session_log">
@@ -21,7 +31,7 @@
   </label>
   <textarea id="session_log" name="session_log" rows="14" required
             placeholder="Paste your accumulated session: rendered dorks, triaged findings (with priorities), pivot suggestions you followed."
-            class="w-full border rounded px-2 py-1 text-sm mb-3 font-mono"></textarea>
+            class="w-full border rounded px-2 py-1 text-sm mb-3 font-mono">{{ prefill_session_log|default('') }}</textarea>
   <button class="bg-gray-900 text-white px-3 py-1 rounded text-sm">
     Generate report
   </button>

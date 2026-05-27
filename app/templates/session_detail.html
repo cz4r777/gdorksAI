@@ -13,6 +13,11 @@
        data-testid="download-report">
       Download .md
     </a>
+    <a href="/report?from={{ session.session_id }}"
+       class="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-100"
+       data-testid="compose-from-session">
+      Re-open as new report
+    </a>
     <button type="button"
             class="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-100"
             onclick="navigator.clipboard.writeText(document.getElementById('report-md').innerText)">
