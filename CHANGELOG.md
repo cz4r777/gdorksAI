@@ -3,6 +3,32 @@
 All notable changes will be documented here. Format roughly follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0-alpha.2] — 2026-05-27
+
+Post-alpha sweep closing the known gaps from alpha.1 + an ops-readiness
+pass. After this lands, the project moves to operations mode: bugfixes,
+hardening, docs, release support only.
+
+### Diagnostic + session ops
+- **P4-T1** — `/render` now emits `dork_render` (info) and `dork_refused` (warn, reason: `invalid_target` / `out_of_scope` / `unknown_dork_id`)
+- **P4-T4** — `probe_ollama_models()` verifies configured `OLLAMA_MODEL_*` env vars against the live `/api/tags` response; reports per-role `installed` flags and a flat `missing` list. New `KIND_OLLAMA_MODELS_CHECK` event; `/status` adds an "Ollama models" card
+- **P4-T2** — `/sessions` page lists saved `runtime/sessions/<id>/` writeups (newest-first, capped at 200); new `Sessions` nav stage
+- **P4-T3** — `/sessions/{id}` detail page + `/sessions/{id}/report.md` download (Markdown). `get_session()` rejects path-traversal candidates
+- **P4-T5** — `/report?from=<id>` pre-fills target + session-log textarea from a prior saved session; session detail page gains a `Re-open as new report` link
+- **P4-T6** — Startup self-check: `probe_runtime_writable()` + `run_startup_readiness()` aggregate; lifespan emits a single `startup_readiness` event with a `ready_for_ai` flag (true if ollama reachable AND configured models installed, OR groq configured). Disabled in tests via `GDORKSAI_SKIP_STARTUP_READINESS=1`
+- **P4-T7** — Ops handoff: this changelog, `docs/OPERATIONS.md` (single-page operator manual), README backup/rollback section
+
+### Known gaps closed since alpha.1
+- ~~In-app session browser~~ → /sessions index + detail (T2 + T3)
+- ~~Event emission on /render refusals~~ → `dork_render` / `dork_refused` (T1)
+- ~~Model-availability probe~~ → `probe_ollama_models` (T4)
+
+### Privacy / safety (unchanged)
+Refuse-by-default scope guard. Events and session metadata are metadata only. `runtime/` and `data/` are gitignored.
+
+### Mode change
+From this release forward, feature-branch work is paused. The remaining queue is bugfixes, hardening, docs, and release support — no new feature tickets unless a real operator gap appears.
+
 ## [0.1.0-alpha.1] — 2026-05-27
 
 ### Phase 1 — Dork registry + scope-gated render
