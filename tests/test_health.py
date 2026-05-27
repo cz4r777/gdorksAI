@@ -261,8 +261,11 @@ async def test_run_health_checks_emits_one_event_per_probe_plus_summary(
         events = await health.run_health_checks()
 
     kinds = [e.kind for e in events]
+    from app.core.events import KIND_OLLAMA_MODELS_CHECK
+
     assert kinds == [
         KIND_OLLAMA_CHECK,
+        KIND_OLLAMA_MODELS_CHECK,
         KIND_GROQ_CHECK,
         KIND_REGISTRY_LOADED,
         KIND_SCOPE_LOADED,
