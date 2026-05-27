@@ -622,3 +622,83 @@ async def pivot_submit(
             "backend": resp.backend,
         },
     )
+
+
+@router.get("/report", response_class=HTMLResponse)
+def report_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "report.html", {})
+
+
+@router.post("/report", response_class=HTMLResponse)
+async def report_submit(
+    request: Request,
+    adapter: AdapterDep,
+    target: Annotated[str, Form()] = "",
+    session_log: Annotated[str, Form()] = "",
+) -> HTMLResponse:
+    target_clean = target.strip()
+    session_clean = session_log.strip()
+    if not target_clean or not session_clean:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "missing input",
+                "detail": "Both target and session log are required.",
+                "target": target_clean,
+            },
+            status_code=400,
+        )
+    try:
+        resp = await adapter.generate(
+            AIRequest(
+                role="report",
+                target=target_clean,
+                user_input=session_clean,
+            )
+        )
+    except OutOfScopeError as e:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "out of scope",
+                "detail": str(e),
+                "target": target_clean,
+            },
+            status_code=403,
+        )
+    except AIAdapterError as e:
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": e.reason.value,
+                "detail": str(e),
+                "target": target_clean,
+            },
+            status_code=_http_for_ai_reason(e.reason),
+        )
+    if resp.text.strip() == "OUT_OF_SCOPE":
+        return templates.TemplateResponse(
+            request,
+            "_query_error.html",
+            {
+                "reason": "out of scope",
+                "detail": (
+                    "The session log referenced an off-scope domain; the "
+                    "AI refused to generate a report."
+                ),
+                "target": target_clean,
+            },
+            status_code=422,
+        )
+    return templates.TemplateResponse(
+        request,
+        "_report_result.html",
+        {
+            "markdown": resp.text,
+            "target": target_clean,
+            "backend": resp.backend,
+        },
+    )
