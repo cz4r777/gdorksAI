@@ -56,6 +56,7 @@ from app.core.events import (
 )
 from app.core.health import run_health_checks
 from app.core.scope import OutOfScopeError, ScopeGuard, reset_default_guard
+from app.core.runtime_config import compute_runtime_config
 from app.core.sessions import get_session, list_sessions, save_report
 from app.core.status import compute_snapshot
 
@@ -277,7 +278,10 @@ def status_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "status.html",
-        {"snapshot": compute_snapshot(request.app)},
+        {
+            "snapshot": compute_snapshot(request.app),
+            "runtime_config": compute_runtime_config(),
+        },
     )
 
 

@@ -28,6 +28,60 @@
 
 {% include "_status_cards.html" %}
 
+{% if runtime_config %}
+<section class="mt-6" data-testid="runtime-config">
+  <h3 class="text-sm font-medium mb-2">Effective runtime config</h3>
+  <p class="text-xs text-gray-500 mb-2">
+    Pulled from the live environment so you can spot config drift without
+    grepping <code>events.jsonl</code>. Secrets are reported as
+    <em>configured</em> / <em>not configured</em>, never their value.
+  </p>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div class="border rounded bg-white p-3">
+      <div class="text-xs font-medium text-gray-700 mb-2">Paths</div>
+      <table class="w-full text-xs">
+        <tbody class="divide-y">
+        {% for e in runtime_config.paths %}
+          <tr data-env="{{ e.name }}">
+            <td class="py-1 pr-2 text-gray-500 align-top whitespace-nowrap">
+              <code>{{ e.name }}</code>
+              <div class="text-[10px] text-gray-400">{{ e.label }}</div>
+            </td>
+            <td class="py-1 break-all"><code>{{ e.value }}</code></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="border rounded bg-white p-3">
+      <div class="text-xs font-medium text-gray-700 mb-2">AI backend</div>
+      <table class="w-full text-xs">
+        <tbody class="divide-y">
+        {% for e in runtime_config.ai_backend %}
+          <tr data-env="{{ e.name }}">
+            <td class="py-1 pr-2 text-gray-500 align-top whitespace-nowrap">
+              <code>{{ e.name }}</code>
+              <div class="text-[10px] text-gray-400">{{ e.label }}</div>
+            </td>
+            <td class="py-1 break-all">
+              {% if e.is_secret %}
+                <span class="text-[10px] px-2 py-0.5 rounded
+                  {{ 'bg-green-100 text-green-800' if e.value == 'configured' else 'bg-gray-200 text-gray-700' }}">
+                  {{ e.value }}
+                </span>
+              {% else %}
+                <code>{{ e.value }}</code>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <section class="mt-6">
   <h3 class="text-sm font-medium mb-2">Workflow capabilities (live)</h3>
   <ul class="grid grid-cols-2 sm:grid-cols-3 gap-2">
