@@ -190,6 +190,16 @@ def test_healthz_still_works(client: TestClient) -> None:
     assert r.json() == {"status": "ok"}
 
 
+def test_base_template_swaps_4xx_responses(client: TestClient) -> None:
+    """HTMX 1.x drops non-2xx responses by default — the server-rendered
+    out-of-scope panel would never appear. base.html must wire up a
+    beforeSwap listener that forces the swap on 4xx/5xx."""
+    r = client.get("/")
+    body = r.text
+    assert "htmx:beforeSwap" in body
+    assert "shouldSwap = true" in body
+
+
 def test_home_renders_navigation_with_phase_state(client: TestClient) -> None:
     r = client.get("/")
     assert r.status_code == 200
