@@ -36,7 +36,12 @@ def client(
     monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
     web.reset_registry()
     scope_module.reset_default_guard()
-    return TestClient(app)
+    c = TestClient(app)
+    # Most tests in this file assert partial-shape responses; the partial
+    # path requires HX-Request: true. The non-HTMX fallback is tested
+    # elsewhere (test_html_fallback.py).
+    c.headers["HX-Request"] = "true"
+    return c
 
 
 def test_home_returns_html_with_categories(client: TestClient) -> None:

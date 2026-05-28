@@ -249,13 +249,19 @@ def diagnostics(request: Request) -> HTMLResponse:
 
 
 @router.post("/diagnostics/refresh", response_class=HTMLResponse)
-async def diagnostics_refresh(request: Request) -> HTMLResponse:
+async def diagnostics_refresh(request: Request) -> Response:
     await run_health_checks()
-    return templates.TemplateResponse(
-        request,
-        "_events_table.html",
-        {"events": read_recent(200)},
-    )
+    if _is_htmx(request):
+        return templates.TemplateResponse(
+            request,
+            "_events_table.html",
+            {"events": read_recent(200)},
+        )
+    # Non-HTMX (plain browser POST): redirect back to /diagnostics so the
+    # operator sees the freshly-emitted events.
+    from fastapi.responses import RedirectResponse
+
+    return RedirectResponse(url="/diagnostics", status_code=303)
 
 
 @router.get("/diagnostics.jsonl")
@@ -276,13 +282,17 @@ def status_page(request: Request) -> HTMLResponse:
 
 
 @router.post("/status/refresh", response_class=HTMLResponse)
-async def status_refresh(request: Request) -> HTMLResponse:
+async def status_refresh(request: Request) -> Response:
     await run_health_checks()
-    return templates.TemplateResponse(
-        request,
-        "_status_cards.html",
-        {"snapshot": compute_snapshot(request.app)},
-    )
+    if _is_htmx(request):
+        return templates.TemplateResponse(
+            request,
+            "_status_cards.html",
+            {"snapshot": compute_snapshot(request.app)},
+        )
+    from fastapi.responses import RedirectResponse
+
+    return RedirectResponse(url="/status", status_code=303)
 
 
 @router.get("/category/{name}", response_class=HTMLResponse)
@@ -385,9 +395,10 @@ def render(
             reason="invalid_target",
             dork_id=dork_id,
         )
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_render_refused.html",
+            "render_standalone.html",
             {"reason": "invalid target", "detail": str(e), "target": target},
             status_code=400,
         )
@@ -404,9 +415,10 @@ def render(
             dork_id=dork_id,
             category=category,
         )
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_render_refused.html",
+            "render_standalone.html",
             {"reason": "out of scope", "detail": str(e), "target": target},
             status_code=403,
         )
@@ -419,9 +431,10 @@ def render(
             reason="unknown_dork_id",
             dork_id=dork_id,
         )
-        return templates.TemplateResponse(
+        return _html_or_full(
             request,
             "_render_refused.html",
+            "render_standalone.html",
             {"reason": "unknown dork id", "detail": str(e), "target": target},
             status_code=404,
         )
@@ -434,9 +447,10 @@ def render(
         category=category,
         source_file=source_file,
     )
-    return templates.TemplateResponse(
+    return _html_or_full(
         request,
         "_render_success.html",
+        "render_standalone.html",
         {
             "query": query,
             "url": google_search_url(query),
