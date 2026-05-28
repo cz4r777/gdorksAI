@@ -108,6 +108,43 @@ def test_render_substitutes_target(
     assert rendered == "site:example.com inurl:id="
 
 
+def test_load_normalizes_curly_quotes(
+    tmp_path: Path,
+) -> None:
+    """Corpus entries copy-pasted from web/Word sometimes have curly quotes
+    that break Google's phrase-match operator. Load-time normalization
+    must convert them to ASCII."""
+    cat = tmp_path / "CCTV"
+    cat.mkdir()
+    (cat / "cams.txt").write_text(
+        "inurl:“CgiStart?page=”\n", encoding="utf-8"
+    )
+    reg = DorkRegistry.from_path(tmp_path)
+    record = next(r for r in reg.search(category="CCTV"))
+    assert "“" not in record.query
+    assert "”" not in record.query
+    assert record.query == 'inurl:"CgiStart?page="'
+
+
+def test_render_injects_site_when_target_placeholder_missing(
+    tmp_path: Path, permissive_scope: ScopeGuard
+) -> None:
+    """Corpus entries that forgot the {target} placeholder would silently
+    ignore the operator's target field. The renderer must inject
+    site:{target} so the user's target is always honored."""
+    cat = tmp_path / "CCTV"
+    cat.mkdir()
+    (cat / "cams.txt").write_text(
+        'inurl:"CgiStart?page="\n', encoding="utf-8"
+    )
+    reg = DorkRegistry.from_path(tmp_path)
+    record = next(r for r in reg.search(category="CCTV"))
+    rendered = reg.render(
+        record.id, "example.com", scope_guard=permissive_scope
+    )
+    assert rendered == 'site:example.com inurl:"CgiStart?page="'
+
+
 def test_render_rejects_empty_target(
     tmp_path: Path, permissive_scope: ScopeGuard
 ) -> None:

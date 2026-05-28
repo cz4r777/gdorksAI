@@ -26,6 +26,19 @@ from app.core.scope import assert_in_scope as _default_assert_in_scope
 _TARGET_PLACEHOLDER = "{target}"
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
+# Curly quotes that crept in from web/Word copy-pastes break Google's
+# phrase-match operator (Google treats curly quotes as literal characters).
+# Map them back to ASCII at load time so the rendered URL is what the
+# operator expects.
+_QUOTE_FIXUPS = {
+    "“": '"',  # left double quotation mark
+    "”": '"',  # right double quotation mark
+    "‘": "'",  # left single quotation mark
+    "’": "'",  # right single quotation mark
+    "«": '"',  # left-pointing double angle quotation mark
+    "»": '"',  # right-pointing double angle quotation mark
+}
+
 
 class RegistryError(Exception):
     """Base for registry errors."""
@@ -61,6 +74,8 @@ def _normalize_query(raw: str) -> str:
         q_values = qs.get("q")
         if q_values:
             query = unquote_plus(q_values[0]).strip()
+    for bad, good in _QUOTE_FIXUPS.items():
+        query = query.replace(bad, good)
     return query.replace("{}", _TARGET_PLACEHOLDER)
 
 
@@ -206,7 +221,14 @@ class DorkRegistry:
         else:
             _default_assert_in_scope(clean_target, caller="dorks.render")
         record = self.get(dork_id)
-        return record.query.replace(_TARGET_PLACEHOLDER, clean_target)
+        query = record.query
+        # If the corpus entry doesn't reference {target}, the operator's
+        # target field would be silently ignored — the rendered URL would
+        # search Google globally for the dork pattern. Inject site:{target}
+        # so the user's target is always honored at render time.
+        if _TARGET_PLACEHOLDER not in query:
+            query = f"site:{_TARGET_PLACEHOLDER} {query}"
+        return query.replace(_TARGET_PLACEHOLDER, clean_target)
 
 
 def load_default_registry() -> DorkRegistry:
