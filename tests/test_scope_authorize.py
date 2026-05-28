@@ -79,7 +79,9 @@ def test_post_authorize_redirects_and_adds(
         data={"target": "evil.com", "next_path": "/query"},
     )
     assert r.status_code == 303
-    assert r.headers["location"] == "/query"
+    # Redirect now carries the just-authorized target as a query param so the
+    # destination page can render a success banner.
+    assert r.headers["location"] == "/query?authorized=evil.com"
     raw = json.loads((tmp_path / "scope.json").read_text(encoding="utf-8"))
     assert "evil.com" in raw["targets"]
 
@@ -90,7 +92,29 @@ def test_post_authorize_rejects_external_redirect(client: TestClient) -> None:
         data={"target": "evil.com", "next_path": "https://attacker.example/"},
     )
     assert r.status_code == 303
-    assert r.headers["location"] == "/"
+    assert r.headers["location"].startswith("/?authorized=")
+
+
+def test_get_query_with_authorized_shows_banner(client: TestClient) -> None:
+    r = client.get("/query?authorized=newly-added.com")
+    assert r.status_code == 200
+    body = r.text
+    assert 'data-testid="authorized-banner"' in body
+    assert "newly-added.com" in body
+    # Target field also pre-filled
+    assert 'value="newly-added.com"' in body
+
+
+def test_get_home_with_authorized_shows_banner(client: TestClient) -> None:
+    r = client.get("/?authorized=newly.com")
+    assert r.status_code == 200
+    assert 'data-testid="authorized-banner"' in r.text
+    assert "newly.com" in r.text
+
+
+def test_get_query_without_authorized_no_banner(client: TestClient) -> None:
+    r = client.get("/query")
+    assert 'data-testid="authorized-banner"' not in r.text
 
 
 def test_post_authorize_empty_target_400(client: TestClient) -> None:
