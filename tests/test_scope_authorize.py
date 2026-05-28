@@ -124,6 +124,37 @@ def test_post_authorize_empty_target_400(client: TestClient) -> None:
     assert r.status_code == 400
 
 
+def test_authorize_busts_adapter_scope_cache(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression: the AI adapter holds its own ScopeGuard separate from the
+    module-level singleton. Authorizing a target must invalidate the adapter
+    too, or /query (and other AI workflows) keep refusing the just-authorized
+    target — looking like a loop to the operator."""
+    from app.core import ai as ai_module
+    from app.core.scope import ScopeGuard
+
+    # Prime the adapter singleton with the original scope (only example.com).
+    adapter = ai_module.load_default_adapter()
+    assert adapter._scope.is_in_scope("example.com") is True
+    assert adapter._scope.is_in_scope("evil.com") is False
+
+    # Click authorize on evil.com.
+    r = client.post(
+        "/scope/authorize",
+        data={"target": "evil.com", "next_path": "/query"},
+    )
+    assert r.status_code == 303
+
+    # A freshly resolved adapter must now treat evil.com as in scope.
+    adapter2 = ai_module.load_default_adapter()
+    assert adapter2 is not adapter, "adapter singleton was not reset"
+    assert adapter2._scope.is_in_scope("evil.com") is True
+
+    # And the module-level guard agrees.
+    assert ScopeGuard(tmp_path / "scope.json").is_in_scope("evil.com") is True
+
+
 def test_query_error_template_renders_authorize_button(
     client: TestClient,
 ) -> None:

@@ -38,6 +38,7 @@ from app.core.ai import (
     AIErrorReason,
     AIRequest,
     load_default_adapter,
+    reset_default_adapter,
 )
 from app.core.dorks import (
     DorkNotFoundError,
@@ -851,9 +852,15 @@ def scope_authorize(
     try:
         guard = ScopeGuard()
         guard.add_target(target_clean)
-        # Bust the module-level default singleton so the next call re-reads
+        # Bust the module-level default singleton so the next /render re-reads
         # the scope file.
         reset_default_guard()
+        # The AI adapter holds its own ScopeGuard instance — resetting the
+        # module singleton alone leaves /query, /triage, /pivot, /report
+        # refusing the just-authorized target. Drop the cached adapter so
+        # the next request rebuilds it against the updated scope file.
+        reset_default_adapter()
+        reset_adapter()
     except (OSError, ValueError) as e:
         return templates.TemplateResponse(
             request,
