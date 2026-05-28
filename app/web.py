@@ -215,7 +215,11 @@ def _parse_query_suggestions(text: str, target: str) -> list[dict[str, Any]]:
 
 
 @router.get("/", response_class=HTMLResponse)
-def index(request: Request, registry: RegistryDep) -> HTMLResponse:
+def index(
+    request: Request,
+    registry: RegistryDep,
+    authorized: str = "",
+) -> HTMLResponse:
     categories = registry.list_categories()
     counts = {c: len(registry.search(category=c)) for c in categories}
     search_hits = registry.search()
@@ -229,6 +233,8 @@ def index(request: Request, registry: RegistryDep) -> HTMLResponse:
             "search_hits": search_hits[:_RESULT_CAP],
             "search_total": len(search_hits),
             "result_cap": _RESULT_CAP,
+            "authorized_target": authorized.strip(),
+            "prefill_target": authorized.strip(),
         },
     )
 
@@ -440,8 +446,18 @@ def render(
 
 
 @router.get("/query", response_class=HTMLResponse)
-def query_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "query.html", {})
+def query_page(
+    request: Request,
+    authorized: str = "",
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "query.html",
+        {
+            "authorized_target": authorized.strip(),
+            "prefill_target": authorized.strip(),
+        },
+    )
 
 
 @router.post("/query", response_class=HTMLResponse)
@@ -573,8 +589,18 @@ def _parse_triage_findings(
 
 
 @router.get("/triage", response_class=HTMLResponse)
-def triage_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "triage.html", {})
+def triage_page(
+    request: Request,
+    authorized: str = "",
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "triage.html",
+        {
+            "authorized_target": authorized.strip(),
+            "prefill_target": authorized.strip(),
+        },
+    )
 
 
 @router.post("/triage", response_class=HTMLResponse)
@@ -670,8 +696,18 @@ async def triage_submit(
 
 
 @router.get("/pivot", response_class=HTMLResponse)
-def pivot_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "pivot.html", {})
+def pivot_page(
+    request: Request,
+    authorized: str = "",
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "pivot.html",
+        {
+            "authorized_target": authorized.strip(),
+            "prefill_target": authorized.strip(),
+        },
+    )
 
 
 @router.post("/pivot", response_class=HTMLResponse)
@@ -813,6 +849,12 @@ def scope_authorize(
         )
     # Sanitize next_path so we don't redirect to an external URL.
     redirect_to = next_path if next_path.startswith("/") else "/"
+    # Append the just-authorized target as a query param so the destination
+    # page can render a success banner and pre-fill the target field.
+    sep = "&" if "?" in redirect_to else "?"
+    redirect_to = (
+        f"{redirect_to}{sep}authorized={quote_plus(target_clean)}"
+    )
     from fastapi.responses import RedirectResponse
 
     return RedirectResponse(url=redirect_to, status_code=303)
@@ -894,6 +936,7 @@ def _prefill_from_session(session_id: str) -> tuple[object, str, str]:
 def report_page(
     request: Request,
     from_session_id: Annotated[str, Query(alias="from")] = "",
+    authorized: str = "",
 ) -> HTMLResponse:
     session = None
     prefill_target = ""
@@ -902,6 +945,11 @@ def report_page(
         session, prefill_target, prefill_session_log = _prefill_from_session(
             from_session_id
         )
+    # If we got here via /scope/authorize redirect, pre-fill the target
+    # field with the just-authorized host (unless a session prefill already
+    # set it).
+    if not prefill_target and authorized:
+        prefill_target = authorized.strip()
     return templates.TemplateResponse(
         request,
         "report.html",
@@ -909,6 +957,7 @@ def report_page(
             "from_session": session,
             "prefill_target": prefill_target,
             "prefill_session_log": prefill_session_log,
+            "authorized_target": authorized.strip(),
         },
     )
 
