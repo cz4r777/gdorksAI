@@ -55,8 +55,8 @@ from app.core.events import (
     record,
 )
 from app.core.health import run_health_checks
-from app.core.scope import OutOfScopeError, ScopeGuard, reset_default_guard
 from app.core.runtime_config import compute_runtime_config
+from app.core.scope import OutOfScopeError, ScopeGuard, reset_default_guard
 from app.core.sessions import get_session, list_sessions, save_report
 from app.core.status import compute_snapshot
 
