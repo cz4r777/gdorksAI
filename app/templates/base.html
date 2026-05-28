@@ -7,6 +7,17 @@
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    // HTMX 1.x drops 4xx responses on the floor by default, which hides the
+    // server-rendered "out of scope / authorize" panel when the user submits
+    // an off-scope target. Force swap on 4xx/5xx so the user actually sees
+    // the refusal + the Authorize button.
+    document.addEventListener("htmx:beforeSwap", function (evt) {
+      var s = evt.detail.xhr.status;
+      if (s >= 400 && s < 600) {
+        evt.detail.shouldSwap = true;
+        evt.detail.isError = false;
+      }
+    });
     // If HTMX failed to load (CDN blocked, in-app browser CSP, etc.), the
     // forms still work via standard POST — the server returns a full page
     // with embedded results. Surface a visible hint so operators know why

@@ -8,9 +8,11 @@ Built for authorized engagements only. No scraping, no headless browser, no anti
 
 ## Status
 
-**`v0.1.0-alpha.1`** — first tagged alpha (2026-05-27). See [CHANGELOG.md](CHANGELOG.md).
+**`v0.1.0-alpha.2`** — current alpha. See [CHANGELOG.md](CHANGELOG.md).
 
-Phase 1, 2, and 3 surfaces are all on `main`. The nav bar's build-state badge reads `phase-3` and every workflow stage (Home, Diagnostics, Status, Query, Triage, Pivot, Report) is mounted. What's actually running is exposed in the UI itself — open `/status` or `/diagnostics` for a live snapshot derived from the diagnostic event log.
+Phase 1, 2, and 3 surfaces are all on `main`. The nav bar's build-state badge reads `phase-3` and every workflow stage (Home, Diagnostics, Status, Query, Triage, Pivot, Report, Sessions) is mounted. What's actually running is exposed in the UI itself — open `/status` or `/diagnostics` for a live snapshot derived from the diagnostic event log.
+
+Since alpha.1: ops-readiness self-check, /status surface for effective runtime config, one-click "authorize this target" button, saved-session browser, and a graceful non-HTMX fallback so the AI forms keep working when the htmx CDN is blocked.
 
 ## Working style
 
@@ -43,23 +45,49 @@ Non-negotiable for v1. Changes require a security ticket.
 4. **Append-only diagnostic log.** Every probe, refusal, and lifecycle event is recorded as a JSON line in `runtime/events.jsonl`. Metadata only — no scope contents, no prompt bodies, no target hostnames being investigated.
 5. **No stealth.** No timing evasion, human mimicry, fingerprint randomization, or detection-avoidance behavior. The 200 ms HTMX debounce on the search input is local UX, not request pacing.
 
-## Quickstart
+## Setup
 
-Python 3.11+. Ollama is required for the Phase 2/3 AI workflows (`/query`, `/triage`, `/pivot`, `/report`); without it, the diagnostics page shows it as unreachable and AI routes return 503. If you set `GROQ_API_KEY`, the adapter falls back to Groq automatically when Ollama is down.
+### Dependencies (required)
+
+- **[Python 3.11+](https://www.python.org/downloads/)** — the FastAPI app targets CPython 3.11 or newer.
+- **[Uvicorn](https://www.uvicorn.org/)** — ASGI server that runs the app. Installed automatically by `pip install -e ".[dev]"`; no separate install required. Reference: [Uvicorn deployment docs](https://www.uvicorn.org/deployment/).
+- A dork corpus on disk — point `DORKS_DATA_PATH` at the directory. The upstream [@Ishanoshada/GDorks](https://github.com/Ishanoshada/GDorks) repo is the canonical source and is known to load out of the box.
+
+### Dependencies (for AI workflows)
+
+`/query`, `/triage`, `/pivot`, and `/report` need an LLM backend. Without one, those routes return 503 and the diagnostics page shows the backend as unreachable.
+
+- **[Ollama](https://ollama.com/download)** — local LLM runtime, the default and recommended backend (fully offline once models are pulled). After install:
+
+  ```bash
+  ollama serve                                # starts the daemon on :11434
+  ollama pull llama3.1:8b-instruct            # query_gen / triage / pivot
+  ollama pull qwen2.5:14b-instruct            # report
+  ```
+
+  Model docs: [ollama.com/library](https://ollama.com/library). API reference: [Ollama REST API](https://github.com/ollama/ollama/blob/main/docs/api.md).
+
+- **[Groq](https://console.groq.com/)** — opt-in cloud fallback used only when Ollama is unreachable. Set `GROQ_API_KEY` in `.env` to enable it; leave it blank to stay fully local with no outbound calls. API docs: [console.groq.com/docs](https://console.groq.com/docs).
+
+### Development environment (recommended)
+
+This repo's pipeline is run by multiple parallel **[Claude Code](https://claude.ai/code)** sessions — one each for supervisor, coder, security, and operator — coordinating via single-block ASCII handovers. Not required to *run* the app; required to follow the project's development workflow as documented in [docs/WORKFLOW.md](docs/WORKFLOW.md). Claude Code install: [claude.ai/code](https://claude.ai/code). API & SDK: [docs.claude.com](https://docs.claude.com).
+
+### Steps
 
 ```bash
 git clone https://github.com/cz4r777/gdorksAI.git
 cd gdorksAI
 
+# 1. Python venv + install
 python -m venv .venv
-source .venv/bin/activate            # PowerShell: .venv\Scripts\Activate.ps1
+source .venv/bin/activate                    # PowerShell: .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 
+# 2. Config — copy template, then edit DORKS_DATA_PATH + SCOPE_FILE
 cp .env.example .env
-# Edit .env: at minimum set DORKS_DATA_PATH and SCOPE_FILE
 
-# Bootstrap a scope file with your authorized targets — without this,
-# every render call returns 403. That is intentional.
+# 3. Scope file — without this, every /render returns 403 (intentional)
 mkdir -p runtime
 cat > runtime/scope.json <<'JSON'
 {
@@ -70,10 +98,18 @@ cat > runtime/scope.json <<'JSON'
 }
 JSON
 
+# 4. (Optional) start Ollama in a separate terminal
+ollama serve
+
+# 5. Run the app
 uvicorn app.main:app --reload
-# http://127.0.0.1:8000                  home / search
-# http://127.0.0.1:8000/diagnostics      event log + health probes
+# http://127.0.0.1:8000                       home / search / authorize
+# http://127.0.0.1:8000/diagnostics           event log + health probes
+# http://127.0.0.1:8000/status                runtime config snapshot
+# http://127.0.0.1:8000/sessions              saved /report writeups
 ```
+
+For daily-use checks, backups, rollback, and common-breakage recipes see the [Operations manual](docs/OPERATIONS.md).
 
 ## Surface
 
@@ -84,15 +120,19 @@ uvicorn app.main:app --reload
 | `/category/{name}` | GET | One-category page, dorks grouped by source file |
 | `/dorks?page=N&per=M` | GET | Paginated flat all-dorks view (per ≤ 200) |
 | `/render` | POST | Scope-gated; returns the Google URL for the operator to click. `400 / 403 / 404` for invalid / out-of-scope / unknown dork |
+| `/scope/authorize` | POST | One-click "add this target to `runtime/scope.json`" button, used from the refusal page |
 | `/diagnostics` | GET | Last 200 events from `runtime/events.jsonl` |
 | `/diagnostics/refresh` | POST | Run all health probes, re-render the event table |
 | `/diagnostics.jsonl` | GET | Raw JSONL export |
-| `/status` | GET | Curated snapshot per-component (latest event per kind) |
+| `/status` | GET | Curated snapshot per-component (latest event per kind) + effective runtime config |
 | `/status/refresh` | POST | Re-run probes, swap the snapshot cards |
 | `/query` | GET/POST | NL intent → AI-drafted dork(s); JSON parsed into clickable URLs |
 | `/triage` | GET/POST | Paste result snippets → AI ranks + server-side dedupes findings |
 | `/pivot` | GET/POST | Paste a triaged finding → AI suggests same-target adjacent dorks |
 | `/report` | GET/POST | Paste a session log → AI writes Markdown report; saved under `runtime/sessions/<id>/` |
+| `/sessions` | GET | Index of saved /report writeups, newest first |
+| `/sessions/{id}` | GET | Detail page for one saved session |
+| `/sessions/{id}/report.md` | GET | Raw Markdown download for one saved session |
 | `/healthz` | GET | `{"status":"ok"}` liveness |
 
 ## Health probes
