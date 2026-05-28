@@ -13,13 +13,16 @@
     <span class="px-2 py-0.5 rounded bg-gray-200 text-gray-800 text-xs"
           data-overall="missing">no probes run yet</span>
   {% endif %}
-  <button type="button"
-          class="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-100"
-          hx-post="/status/refresh"
-          hx-target="#status-cards"
-          hx-swap="outerHTML">
-    Run probes now
-  </button>
+  <form action="/status/refresh" method="post"
+        class="inline">
+    <button type="submit"
+            class="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-100"
+            hx-post="/status/refresh"
+            hx-target="#status-cards"
+            hx-swap="outerHTML">
+      Run probes now
+    </button>
+  </form>
   <a href="/diagnostics" class="text-xs underline">full event log</a>
 </section>
 

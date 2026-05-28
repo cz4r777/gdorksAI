@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="mb-4">
+  <h2 class="text-lg font-medium">Render result</h2>
+  <p class="text-xs text-gray-500">
+    Fallback page shown when the browser submitted the render form via standard
+    POST (e.g. HTMX didn't load). The result is below; pick a dork again from
+    <a href="/" class="text-blue-700 hover:underline">home</a>,
+    <a href="/dorks" class="text-blue-700 hover:underline">all dorks</a>, or a
+    <a href="javascript:history.back()" class="text-blue-700 hover:underline">go back</a>.
+  </p>
+</section>
+
+{% if embedded_result_html %}
+  {{ embedded_result_html | safe }}
+{% endif %}
+{% endblock %}

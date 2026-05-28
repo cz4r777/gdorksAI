@@ -37,7 +37,8 @@
       {% for h in items %}
       <li class="p-3" data-dork-id="{{ h.id }}">
         <code class="block text-sm mb-2 break-all">{{ h.query }}</code>
-        <form hx-post="/render"
+        <form action="/render" method="post"
+              hx-post="/render"
               hx-target="#render-{{ loop.index }}-{{ loop.index0 }}-{{ category|urlencode }}"
               class="flex gap-2 items-center">
           <input type="hidden" name="dork_id" value="{{ h.id }}">

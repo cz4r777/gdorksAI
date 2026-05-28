@@ -24,7 +24,8 @@
       {{ h.category }} &middot; <code>{{ h.source_file }}</code>
     </div>
     <code class="block text-sm mb-2 break-all">{{ h.query }}</code>
-    <form hx-post="/render"
+    <form action="/render" method="post"
+          hx-post="/render"
           hx-target="#render-out-{{ loop.index }}"
           class="flex gap-2 items-center">
       <input type="hidden" name="dork_id" value="{{ h.id }}">

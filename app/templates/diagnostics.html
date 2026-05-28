@@ -2,13 +2,16 @@
 {% block content %}
 <section class="mb-4 flex items-center gap-3">
   <h2 class="text-lg font-medium">Diagnostics</h2>
-  <button type="button"
-          class="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-100"
-          hx-post="/diagnostics/refresh"
-          hx-target="#events-table"
-          hx-swap="outerHTML">
-    Run health check
-  </button>
+  <form action="/diagnostics/refresh" method="post"
+        class="inline">
+    <button type="submit"
+            class="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-100"
+            hx-post="/diagnostics/refresh"
+            hx-target="#events-table"
+            hx-swap="outerHTML">
+      Run health check
+    </button>
+  </form>
   <a href="/diagnostics.jsonl" class="text-xs underline" target="_blank">
     raw events.jsonl
   </a>
